@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
     const dynamic = b.option(bool, "dynamic", "build dynamic library (default: false)") orelse false;
@@ -12,8 +12,10 @@ pub fn build(b: *std.Build) void {
 
     const lib: *std.Build.Step.Compile = if (dynamic) b.addSharedLibrary(opts) else b.addStaticLibrary(opts);
 
-    comptime var extra_flags: StrSlice = &.{
-        "-DWEBP_USE_THREAD",
+    var c_flags = std.ArrayList([]const u8).init(b.allocator);
+    defer c_flags.deinit();
+    lib.defineCMacro("WEBP_USE_THREAD", null);
+    try c_flags.appendSlice(&.{
         "-fvisibility=hidden",
         "-Wextra",
         "-Wold-style-definition",
@@ -23,11 +25,40 @@ pub fn build(b: *std.Build) void {
         "-Wshadow",
         "-Wformat-security",
         "-Wformat-nonliteral",
-    };
-    const cpp_flags: StrSlice = &.{ "-I.", "-Isrc/", "-Wall", "-lm" };
-    const c_flags: StrSlice = cpp_flags ++ extra_flags;
+        "-I.",
+        "-Isrc/",
+        "-Wall",
+        "-lm",
+    });
 
-    lib.addCSourceFiles(.{ .files = libwebp_srsc, .flags = c_flags });
+    const features_set = target.getCpuFeatures();
+
+    if (target.getCpuArch().isX86()) {
+        // For 32bit platform
+        if (std.Target.x86.featureSetHas(features_set, .@"32bit_mode"))
+            try c_flags.append("-m32");
+        // SSE4.1-specific flags:
+        if (std.Target.x86.featureSetHas(features_set, .sse4_1)) {
+            lib.defineCMacro("WEBP_HAVE_SSE41", null);
+            try c_flags.append("-msse4.1");
+        }
+    }
+
+    // NEON-specific flags:
+    if (target.getCpuArch().isARM() and std.Target.arm.featureSetHas(features_set, .neon)) {
+        try c_flags.appendSlice(&.{ "-march=armv7-a", "-mfloat-abi=hard", "-mfpu=neon", "-mtune=cortex-a8" });
+    }
+
+    if (target.getCpuArch().isMIPS()) {
+        // MIPS (MSA) 32-bit build specific flags for mips32r5 (p5600):
+        if (std.Target.mips.featureSetHas(features_set, .mips32r5))
+            try c_flags.appendSlice(&.{ "-mips32r5", "-mabi=32", "-mtune=p5600", "-mmsa", "-mfp64", "-msched-weight", "-mload-store-pairs" });
+        // MIPS (MSA) 64-bit build specific flags for mips64r6 (i6400):
+        if (std.Target.mips.featureSetHas(features_set, .mips64r6))
+            try c_flags.appendSlice(&.{ "-mips64r6", "-mabi=64", "-mtune=i6400", "-mmsa", "-mfp64", "-msched-weight", "-mload-store-pairs" });
+    }
+
+    lib.addCSourceFiles(.{ .files = libwebp_srsc, .flags = c_flags.items });
     lib.addIncludePath(.{ .path = "inc" });
     lib.force_pic = true;
     lib.linkLibC();
