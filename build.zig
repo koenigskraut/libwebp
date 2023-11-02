@@ -3,19 +3,25 @@ const std = @import("std");
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const dynamic = b.option(bool, "dynamic", "build dynamic library (default: false)") orelse false;
-    const opts = .{
-        .name = "webp",
-        .target = target,
-        .optimize = optimize,
-    };
 
-    const lib: *std.Build.Step.Compile = if (dynamic) b.addSharedLibrary(opts) else b.addStaticLibrary(opts);
+    const libs = [_]*std.Build.Step.Compile{
+        // libwebp
+        b.addSharedLibrary(.{ .name = "webp", .target = target, .optimize = optimize, .version = .{ .major = 8, .minor = 8, .patch = 1 } }),
+        b.addStaticLibrary(.{ .name = "webp", .target = target, .optimize = optimize }),
+        // libwebpdecoder
+        b.addSharedLibrary(.{ .name = "webpdecoder", .target = target, .optimize = optimize, .version = .{ .major = 4, .minor = 8, .patch = 1 } }),
+        b.addStaticLibrary(.{ .name = "webpdecoder", .target = target, .optimize = optimize }),
+        // libwebpmux
+        b.addSharedLibrary(.{ .name = "webpmux", .target = target, .optimize = optimize, .version = .{ .major = 3, .minor = 13, .patch = 0 } }),
+        b.addStaticLibrary(.{ .name = "webpmux", .target = target, .optimize = optimize }),
+        // libwebpdemux
+        b.addSharedLibrary(.{ .name = "webpdemux", .target = target, .optimize = optimize, .version = .{ .major = 2, .minor = 14, .patch = 0 } }),
+        b.addStaticLibrary(.{ .name = "webpdemux", .target = target, .optimize = optimize }),
+    };
 
     var c_flags = std.ArrayList([]const u8).init(b.allocator);
     defer c_flags.deinit();
     try c_flags.appendSlice(&.{
-        "-fno-sanitize=undefined",
         "-fvisibility=hidden",
         "-Wextra",
         "-Wold-style-definition",
@@ -33,37 +39,55 @@ pub fn build(b: *std.Build) !void {
 
     // Platform-specific flags
     {
-        const t = lib.target_info.target;
+        const cpu = target.getCpu();
         // For 32bit x86 platform
-        if (have_x86_feat(t, .@"32bit_mode") and !have_x86_feat(t, .@"64bit"))
+        if (have_x86_feat(cpu, .@"32bit_mode") and !have_x86_feat(cpu, .@"64bit"))
             try c_flags.append("-m32");
         // SSE4.1-specific flags:
-        if (have_x86_feat(t, .sse4_1)) {
-            lib.defineCMacro("WEBP_HAVE_SSE41", null);
+        if (have_x86_feat(cpu, .sse4_1)) {
+            for (libs) |lib| lib.defineCMacro("WEBP_HAVE_SSE41", null);
             try c_flags.append("-msse4.1");
         }
         // NEON-specific flags:
-        if (have_arm_feat(t, .neon) or have_aarch64_feat(t, .neon)) {
+        if (have_arm_feat(cpu, .neon) or have_aarch64_feat(cpu, .neon)) {
             try c_flags.appendSlice(&.{ "-march=armv7-a", "-mfloat-abi=hard", "-mfpu=neon", "-mtune=cortex-a8" });
         }
         // MIPS (MSA) 32-bit build specific flags for mips32r5 (p5600):
-        if (have_mips_feat(t, .mips32r5))
+        if (have_mips_feat(cpu, .mips32r5))
             try c_flags.appendSlice(&.{ "-mips32r5", "-mabi=32", "-mtune=p5600", "-mmsa", "-mfp64", "-msched-weight", "-mload-store-pairs" });
         // MIPS (MSA) 64-bit build specific flags for mips64r6 (i6400):
-        if (have_mips_feat(t, .mips64r6))
+        if (have_mips_feat(cpu, .mips64r6))
             try c_flags.appendSlice(&.{ "-mips64r6", "-mabi=64", "-mtune=i6400", "-mmsa", "-mfp64", "-msched-weight", "-mload-store-pairs" });
     }
 
-    lib.addCSourceFiles(.{ .files = libwebp_srsc, .flags = c_flags.items });
-    lib.force_pic = true;
-    lib.linkLibC();
-    lib.addIncludePath(.{ .path = "." });
-    const headers = .{ "decode.h", "demux.h", "encode.h", "mux_types.h", "mux.h", "types.h" };
-    inline for (headers) |h| lib.installHeader("src/webp/" ++ h, h);
-    lib.defineCMacro("WEBP_USE_THREAD", null);
-    lib.linkSystemLibrary("pthread");
+    for (libs) |lib| lib.force_pic = true;
+    for (libs) |lib| lib.linkLibC();
+    for (libs) |lib| lib.addIncludePath(.{ .path = "." });
+    for (libs) |lib| lib.defineCMacro("WEBP_USE_THREAD", null);
+    for (libs) |lib| lib.linkSystemLibrary("pthread");
 
-    b.installArtifact(lib);
+    // libwebp
+    for (libs[0..2]) |lib| {
+        lib.addCSourceFiles(.{ .files = libwebp_srsc, .flags = c_flags.items });
+        inline for (.{ "decode.h", "encode.h", "types.h" }) |h| lib.installHeader("src/webp/" ++ h, h);
+    }
+    // libwebpdecoder
+    for (libs[2..4]) |lib| {
+        lib.addCSourceFiles(.{ .files = libwebpdecoder_srsc, .flags = c_flags.items });
+        inline for (.{ "decode.h", "types.h" }) |h| lib.installHeader("src/webp/" ++ h, h);
+    }
+    // libwebpmux
+    for (libs[4..6]) |lib| {
+        lib.addCSourceFiles(.{ .files = libwebpmux_srsc, .flags = c_flags.items });
+        inline for (.{ "mux.h", "mux_types.h" }) |h| lib.installHeader("src/webp/" ++ h, h);
+    }
+    // libwebpdemux
+    for (libs[6..8]) |lib| {
+        lib.addCSourceFiles(.{ .files = libwebpdemux_srsc, .flags = c_flags.items });
+        inline for (.{ "demux.h", "mux_types.h" }) |h| lib.installHeader("src/webp/" ++ h, h);
+    }
+
+    for (libs) |lib| b.installArtifact(lib);
 }
 
 const StrSlice = []const []const u8;
@@ -71,8 +95,8 @@ const StrSlice = []const []const u8;
 const libsharpyuv_srsc = sharpyuv_srcs;
 const libwebpdecoder_srsc = dec_srcs ++ dsp_dec_srsc ++ utils_dec_srsc;
 const libwebp_srsc = libwebpdecoder_srsc ++ enc_srsc ++ dsp_enc_srcs ++ utils_enc_srcs ++ libsharpyuv_srsc;
-// const libwebpmux_srsc = mux_srcs;
-// const libwebpdemux_srsc = demux_srcs;
+const libwebpmux_srsc = mux_srcs;
+const libwebpdemux_srsc = demux_srcs;
 // const libwebpextra = extra_srsc;
 
 const sharpyuv_srcs: StrSlice = &.{
@@ -98,10 +122,10 @@ const dec_srcs: StrSlice = &.{
     "src/dec/webp_dec.c",
 };
 
-// const demux_srcs: StrSlice = &.{
-//     "src/demux/anim_decode.c",
-//     "src/demux/demux.c",
-// };
+const demux_srcs: StrSlice = &.{
+    "src/demux/anim_decode.c",
+    "src/demux/demux.c",
+};
 
 const dsp_dec_srsc: StrSlice = &.{
     "src/dsp/alpha_processing.c",
@@ -199,12 +223,12 @@ const enc_srsc: StrSlice = &.{
     "src/enc/webp_enc.c",
 };
 
-// const mux_srcs: StrSlice = &.{
-//     "src/mux/anim_encode.c",
-//     "src/mux/muxedit.c",
-//     "src/mux/muxinternal.c",
-//     "src/mux/muxread.c",
-// };
+const mux_srcs: StrSlice = &.{
+    "src/mux/anim_encode.c",
+    "src/mux/muxedit.c",
+    "src/mux/muxinternal.c",
+    "src/mux/muxread.c",
+};
 
 const utils_dec_srsc: StrSlice = &.{
     "src/utils/bit_reader_utils.c",
@@ -230,34 +254,34 @@ const utils_enc_srcs: StrSlice = &.{
 //     "extras/quality_estimate.c",
 // };
 
-fn have_x86_feat(t: std.Target, feat: std.Target.x86.Feature) bool {
-    return switch (t.cpu.arch) {
-        .x86, .x86_64 => std.Target.x86.featureSetHas(t.cpu.features, feat),
+fn have_x86_feat(cpu: std.Target.Cpu, feat: std.Target.x86.Feature) bool {
+    return switch (cpu.arch) {
+        .x86, .x86_64 => std.Target.x86.featureSetHas(cpu.features, feat),
         else => false,
     };
 }
 
-fn have_arm_feat(t: std.Target, feat: std.Target.arm.Feature) bool {
-    return switch (t.cpu.arch) {
-        .arm, .armeb => std.Target.arm.featureSetHas(t.cpu.features, feat),
+fn have_arm_feat(cpu: std.Target.Cpu, feat: std.Target.arm.Feature) bool {
+    return switch (cpu.arch) {
+        .arm, .armeb => std.Target.arm.featureSetHas(cpu.features, feat),
         else => false,
     };
 }
 
-fn have_aarch64_feat(t: std.Target, feat: std.Target.aarch64.Feature) bool {
-    return switch (t.cpu.arch) {
+fn have_aarch64_feat(cpu: std.Target.Cpu, feat: std.Target.aarch64.Feature) bool {
+    return switch (cpu.arch) {
         .aarch64,
         .aarch64_be,
         .aarch64_32,
-        => std.Target.aarch64.featureSetHas(t.cpu.features, feat),
+        => std.Target.aarch64.featureSetHas(cpu.features, feat),
 
         else => false,
     };
 }
 
-fn have_mips_feat(t: std.Target, feat: std.Target.mips.Feature) bool {
-    return switch (t.cpu.arch) {
-        .mips, .mipsel, .mips64, .mips64el => std.Target.mips.featureSetHas(t.cpu.features, feat),
+fn have_mips_feat(cpu: std.Target.Cpu, feat: std.Target.mips.Feature) bool {
+    return switch (cpu.arch) {
+        .mips, .mipsel, .mips64, .mips64el => std.Target.mips.featureSetHas(cpu.features, feat),
         else => false,
     };
 }
