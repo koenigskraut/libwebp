@@ -14,8 +14,8 @@ pub fn build(b: *std.Build) !void {
 
     var c_flags = std.ArrayList([]const u8).init(b.allocator);
     defer c_flags.deinit();
-    lib.defineCMacro("WEBP_USE_THREAD", null);
     try c_flags.appendSlice(&.{
+        "-fno-sanitize=undefined",
         "-fvisibility=hidden",
         "-Wextra",
         "-Wold-style-definition",
@@ -31,38 +31,38 @@ pub fn build(b: *std.Build) !void {
         "-lm",
     });
 
-    const features_set = target.getCpuFeatures();
-
-    if (target.getCpuArch().isX86()) {
-        // For 32bit platform
-        if (std.Target.x86.featureSetHas(features_set, .@"32bit_mode"))
+    // Platform-specific flags
+    {
+        const t = lib.target_info.target;
+        // For 32bit x86 platform
+        if (have_x86_feat(t, .@"32bit_mode") and !have_x86_feat(t, .@"64bit"))
             try c_flags.append("-m32");
         // SSE4.1-specific flags:
-        if (std.Target.x86.featureSetHas(features_set, .sse4_1)) {
+        if (have_x86_feat(t, .sse4_1)) {
             lib.defineCMacro("WEBP_HAVE_SSE41", null);
             try c_flags.append("-msse4.1");
         }
-    }
-
-    // NEON-specific flags:
-    if (target.getCpuArch().isARM() and std.Target.arm.featureSetHas(features_set, .neon)) {
-        try c_flags.appendSlice(&.{ "-march=armv7-a", "-mfloat-abi=hard", "-mfpu=neon", "-mtune=cortex-a8" });
-    }
-
-    if (target.getCpuArch().isMIPS()) {
+        // NEON-specific flags:
+        if (have_arm_feat(t, .neon) or have_aarch64_feat(t, .neon)) {
+            try c_flags.appendSlice(&.{ "-march=armv7-a", "-mfloat-abi=hard", "-mfpu=neon", "-mtune=cortex-a8" });
+        }
         // MIPS (MSA) 32-bit build specific flags for mips32r5 (p5600):
-        if (std.Target.mips.featureSetHas(features_set, .mips32r5))
+        if (have_mips_feat(t, .mips32r5))
             try c_flags.appendSlice(&.{ "-mips32r5", "-mabi=32", "-mtune=p5600", "-mmsa", "-mfp64", "-msched-weight", "-mload-store-pairs" });
         // MIPS (MSA) 64-bit build specific flags for mips64r6 (i6400):
-        if (std.Target.mips.featureSetHas(features_set, .mips64r6))
+        if (have_mips_feat(t, .mips64r6))
             try c_flags.appendSlice(&.{ "-mips64r6", "-mabi=64", "-mtune=i6400", "-mmsa", "-mfp64", "-msched-weight", "-mload-store-pairs" });
     }
 
     lib.addCSourceFiles(.{ .files = libwebp_srsc, .flags = c_flags.items });
-    lib.addIncludePath(.{ .path = "inc" });
     lib.force_pic = true;
     lib.linkLibC();
-    lib.addLibraryPath(.{ .path = "/usr/local/lib" });
+    lib.addIncludePath(.{ .path = "." });
+    const headers = .{ "decode.h", "demux.h", "encode.h", "mux_types.h", "mux.h", "types.h" };
+    inline for (headers) |h| lib.installHeader("src/webp/" ++ h, h);
+    lib.defineCMacro("WEBP_USE_THREAD", null);
+    lib.linkSystemLibrary("pthread");
+
     b.installArtifact(lib);
 }
 
@@ -229,3 +229,35 @@ const utils_enc_srcs: StrSlice = &.{
 //     "extras/extras.c",
 //     "extras/quality_estimate.c",
 // };
+
+fn have_x86_feat(t: std.Target, feat: std.Target.x86.Feature) bool {
+    return switch (t.cpu.arch) {
+        .x86, .x86_64 => std.Target.x86.featureSetHas(t.cpu.features, feat),
+        else => false,
+    };
+}
+
+fn have_arm_feat(t: std.Target, feat: std.Target.arm.Feature) bool {
+    return switch (t.cpu.arch) {
+        .arm, .armeb => std.Target.arm.featureSetHas(t.cpu.features, feat),
+        else => false,
+    };
+}
+
+fn have_aarch64_feat(t: std.Target, feat: std.Target.aarch64.Feature) bool {
+    return switch (t.cpu.arch) {
+        .aarch64,
+        .aarch64_be,
+        .aarch64_32,
+        => std.Target.aarch64.featureSetHas(t.cpu.features, feat),
+
+        else => false,
+    };
+}
+
+fn have_mips_feat(t: std.Target, feat: std.Target.mips.Feature) bool {
+    return switch (t.cpu.arch) {
+        .mips, .mipsel, .mips64, .mips64el => std.Target.mips.featureSetHas(t.cpu.features, feat),
+        else => false,
+    };
+}
