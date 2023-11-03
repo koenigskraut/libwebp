@@ -37,7 +37,7 @@ pub fn build(b: *std.Build) !void {
         "-lm",
     });
 
-    // Platform-specific flags
+    // Platform-specific settings
     {
         const cpu = target.getCpu();
         // For 32bit x86 platform
@@ -58,6 +58,14 @@ pub fn build(b: *std.Build) !void {
         // MIPS (MSA) 64-bit build specific flags for mips64r6 (i6400):
         if (have_mips_feat(cpu, .mips64r6))
             try c_flags.appendSlice(&.{ "-mips64r6", "-mabi=64", "-mtune=i6400", "-mmsa", "-mfp64", "-msched-weight", "-mload-store-pairs" });
+
+        // Windows recommends setting both UNICODE and _UNICODE.
+        if (target.isWindows()) {
+            for (libs) |lib| {
+                lib.defineCMacro("UNICODE", null);
+                lib.defineCMacro("_UNICODE", null);
+            }
+        }
     }
 
     for (libs) |lib| lib.force_pic = true;
