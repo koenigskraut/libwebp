@@ -95,7 +95,7 @@ pub fn build(b: *std.Build) !void {
         inline for (.{ "demux.h", "mux_types.h" }) |h| lib.installHeader("src/webp/" ++ h, h);
     }
 
-    for (libs[0..1]) |lib| b.installArtifact(lib);
+    for (libs) |lib| b.installArtifact(lib);
 }
 
 const StrSlice = []const []const u8;
