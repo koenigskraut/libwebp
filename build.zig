@@ -75,24 +75,18 @@ pub fn build(b: *std.Build) !void {
     for (libs) |lib| lib.linkSystemLibrary("pthread");
 
     // libwebp
-    for (libs[0..2]) |lib| {
-        lib.addCSourceFiles(.{ .files = libwebp_srsc, .flags = c_flags.items });
-        inline for (.{ "decode.h", "encode.h", "types.h" }) |h| lib.installHeader("src/webp/" ++ h, h);
-    }
+    for (libs[0..2]) |lib| lib.addCSourceFiles(.{ .files = libwebp_srsc, .flags = c_flags.items });
     // libwebpdecoder
-    for (libs[2..4]) |lib| {
-        lib.addCSourceFiles(.{ .files = libwebpdecoder_srsc, .flags = c_flags.items });
-        inline for (.{ "decode.h", "types.h" }) |h| lib.installHeader("src/webp/" ++ h, h);
-    }
+    for (libs[2..4]) |lib| lib.addCSourceFiles(.{ .files = libwebpdecoder_srsc, .flags = c_flags.items });
     // libwebpmux
-    for (libs[4..6]) |lib| {
-        lib.addCSourceFiles(.{ .files = libwebpmux_srsc, .flags = c_flags.items });
-        inline for (.{ "mux.h", "mux_types.h" }) |h| lib.installHeader("src/webp/" ++ h, h);
-    }
+    for (libs[4..6]) |lib| lib.addCSourceFiles(.{ .files = libwebpmux_srsc, .flags = c_flags.items });
     // libwebpdemux
-    for (libs[6..8]) |lib| {
-        lib.addCSourceFiles(.{ .files = libwebpdemux_srsc, .flags = c_flags.items });
-        inline for (.{ "demux.h", "mux_types.h" }) |h| lib.installHeader("src/webp/" ++ h, h);
+    for (libs[6..8]) |lib| lib.addCSourceFiles(.{ .files = libwebpdemux_srsc, .flags = c_flags.items });
+
+    const headers: StrSlice = &.{ "decode.h", "encode.h", "types.h", "mux.h", "demux.h", "mux_types.h" };
+    inline for (headers) |h| {
+        const h_file = b.addInstallHeaderFile("src/webp/" ++ h, h);
+        b.install_tls.step.dependOn(&h_file.step);
     }
 
     for (libs) |lib| b.installArtifact(lib);
