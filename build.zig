@@ -48,8 +48,8 @@ pub fn build(b: *std.Build) !void {
             for (libs) |lib| lib.defineCMacro("WEBP_HAVE_SSE41", null);
             try c_flags.append("-msse4.1");
         }
-        // NEON-specific flags:
-        if (have_arm_feat(cpu, .neon) or have_aarch64_feat(cpu, .neon)) {
+        // NEON-specific flags (mandatory for aarch64):
+        if (have_arm_feat(cpu, .neon)) {
             try c_flags.appendSlice(&.{ "-march=armv7-a", "-mfloat-abi=hard", "-mfpu=neon", "-mtune=cortex-a8" });
         }
         // MIPS (MSA) 32-bit build specific flags for mips32r5 (p5600):
@@ -95,7 +95,7 @@ pub fn build(b: *std.Build) !void {
         inline for (.{ "demux.h", "mux_types.h" }) |h| lib.installHeader("src/webp/" ++ h, h);
     }
 
-    for (libs) |lib| b.installArtifact(lib);
+    for (libs[0..1]) |lib| b.installArtifact(lib);
 }
 
 const StrSlice = []const []const u8;
