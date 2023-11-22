@@ -5,6 +5,15 @@ const webp = struct {
 
 const assert = std.debug.assert;
 pub const c_bool = c_int;
+
+//------------------------------------------------------------------------------
+// Alignment
+
+pub const WEBP_ALIGN_CST = 31;
+pub inline fn WEBP_ALIGN(PTR: anytype) usize {
+    return (@intFromPtr(PTR) + WEBP_ALIGN_CST) & ~@as(usize, WEBP_ALIGN_CST);
+}
+
 //------------------------------------------------------------------------------
 // Pixel copying.
 
@@ -27,7 +36,6 @@ pub export fn WebPCopyPixels(src: *const webp.Picture, dst: *webp.Picture) void 
     assert(src.use_argb != 0 and dst.use_argb != 0);
     WebPCopyPlane(@ptrCast(src.argb), 4 * src.argb_stride, @ptrCast(dst.argb), 4 * dst.argb_stride, 4 * src.width, src.height);
 }
-
 
 //------------------------------------------------------------------------------
 
@@ -73,7 +81,7 @@ pub extern fn WebPSafeCalloc(nmemb: u64, size: usize) ?*anyopaque;
 pub extern fn WebPSafeFree(ptr: ?*anyopaque) void;
 
 pub inline fn offsetPtr(ptr: anytype, offset: i64) @TypeOf(ptr) {
-    return if (offset > 0) ptr + @abs(offset) else ptr - @abs(offset);
+    return if (offset < 0) ptr - @abs(offset) else ptr + @abs(offset);
 }
 
 pub inline fn diffPtr(minuend: anytype, subtrahend: @TypeOf(minuend)) isize {
@@ -83,4 +91,8 @@ pub inline fn diffPtr(minuend: anytype, subtrahend: @TypeOf(minuend)) isize {
 
 pub inline fn WEBP_ABI_IS_INCOMPATIBLE(a: anytype, b: anytype) @TypeOf((a >> @as(c_int, 8)) != (b >> @as(c_int, 8))) {
     return (a >> @as(c_int, 8)) != (b >> @as(c_int, 8));
+}
+
+pub fn CheckSizeOverflow(size: u64) bool {
+    return size == @as(usize, @bitCast(size));
 }

@@ -5,10 +5,12 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
     const reduce_size = b.option(bool, "reduce-size", "") orelse false;
     const no_fancy_upsampling = b.option(bool, "no-fancy-upsampling", "") orelse false;
+    const swap_16bit_csp = b.option(bool, "swap-16bit-csp", "") orelse false;
 
     const options = b.addOptions();
     options.addOption(bool, "reduce_size", reduce_size);
     options.addOption(bool, "fancy_upsampling", !no_fancy_upsampling);
+    options.addOption(bool, "swap_16bit_csp", swap_16bit_csp);
 
     const lib = b.addStaticLibrary(.{
         .name = "webp",
@@ -156,7 +158,7 @@ const dec_srcs: StrSlice = &.{
     // "src/dec/buffer_dec.c",
     "src/dec/frame_dec.c",
     "src/dec/idec_dec.c",
-    "src/dec/io_dec.c",
+    // "src/dec/io_dec.c",
     // "src/dec/quant_dec.c",
     // "src/dec/tree_dec.c",
     "src/dec/vp8_dec.c",
