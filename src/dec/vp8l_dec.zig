@@ -7,6 +7,7 @@ const webp = struct {
     pub usingnamespace @import("../webp/format_constants.zig");
     pub usingnamespace @import("../utils/bit_reader_utils.zig");
     pub usingnamespace @import("../utils/color_cache_utils.zig");
+    pub usingnamespace @import("../utils/huffman_utils.zig");
     pub usingnamespace @import("../utils/utils.zig");
 };
 

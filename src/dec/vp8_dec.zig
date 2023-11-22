@@ -4,8 +4,11 @@ const c = @cImport({
     @cInclude("src/utils/thread_utils.h");
 });
 const webp = struct {
+    usingnamespace @import("alpha_dec.zig");
     usingnamespace @import("common_dec.zig");
+    usingnamespace @import("../utils/bit_reader_utils.zig");
     usingnamespace @import("../utils/utils.zig");
+    usingnamespace @import("../webp/decode.zig");
 };
 
 const c_bool = webp.c_bool;
@@ -91,6 +94,22 @@ pub const VP8Io = extern struct {
     /// cropping into account).
     a: ?[*]const u8,
 };
+
+// Must be called to make sure 'io' is initialized properly.
+// Returns false in case of version mismatch. Upon such failure, no other
+// decoding function should be called (VP8Decode, VP8GetHeaders, ...)
+pub inline fn VP8InitIo(io: ?*VP8Io) bool {
+    return VP8InitIoInternal(io, webp.DECODER_ABI_VERSION);
+}
+
+// Internal, version-checked, entry point
+pub fn VP8InitIoInternal(io: ?*VP8Io, version: c_int) bool { // export
+    if (c.WEBP_ABI_IS_INCOMPATIBLE(version, webp.DECODER_ABI_VERSION)) {
+        return false; // mismatch error
+    }
+    if (io) |io_ptr| io_ptr.* = std.mem.zeroes(VP8Io);
+    return true;
+}
 
 pub const VP8FrameHeader = extern struct {
     key_frame_: u8,

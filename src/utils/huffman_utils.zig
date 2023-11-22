@@ -4,7 +4,7 @@ const webp = struct {
     usingnamespace @import("utils.zig");
 };
 
-pub const c_bool = c_int;
+const c_bool = webp.c_bool;
 
 pub const HUFFMAN_TABLE_BITS = 8;
 pub const HUFFMAN_TABLE_MASK = ((1 << HUFFMAN_TABLE_BITS) - 1);

@@ -33,3 +33,7 @@ pub fn have_mips_feat(cpu: std.Target.Cpu, feat: std.Target.mips.Feature) bool {
         else => false,
     };
 }
+
+pub extern fn WebPSafeMalloc(nmemb: u64, size: usize) ?*anyopaque;
+pub extern fn WebPSafeCalloc(nmemb: u64, size: usize) ?*anyopaque;
+pub extern fn WebPSafeFree(ptr: ?*anyopaque) void;
