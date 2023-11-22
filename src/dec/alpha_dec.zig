@@ -1,5 +1,6 @@
 const std = @import("std");
 const webp = struct {
+    usingnamespace @import("io_dec.zig");
     usingnamespace @import("vp8_dec.zig");
     usingnamespace @import("vp8l_dec.zig");
     usingnamespace @import("../dsp/dsp.zig");
@@ -9,11 +10,8 @@ const webp = struct {
 
     extern fn VP8LDelete(dec: [*c]webp.VP8LDecoder) void;
     extern fn VP8FiltersInit() void;
-    extern fn VP8InitIoInternal([*c]webp.VP8Io, c_int) c_int;
-    extern fn WebPInitCustomIo(params: ?*anyopaque, io: [*c]webp.VP8Io) void;
     extern fn VP8LDecodeAlphaHeader(alph_dec: ?*ALPHDecoder, data: [*c]const u8, data_size: usize) c_int;
     extern fn VP8LDecodeAlphaImageStream(alph_dec: ?*ALPHDecoder, last_row: c_int) c_int;
-    extern fn VP8SetError(dec: [*c]webp.VP8Decoder, @"error": webp.VP8Status, msg: [*c]const u8) c_int;
     extern fn WebPDequantizeLevels(data: [*c]u8, width: c_int, height: c_int, stride: c_int, strength: c_int) c_int;
 
     const WebPUnfilterFunc = ?*const fn ([*c]const u8, [*c]const u8, [*c]u8, c_int) callconv(.C) void;

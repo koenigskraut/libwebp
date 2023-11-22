@@ -386,6 +386,7 @@ fn ParseIntraMode(br: *webp.VP8BitReader, dec: *webp.VP8Decoder, mb_x: c_int) vo
         webp.H_PRED;
 }
 
+/// parses one row of intra mode data in partition 0, returns !eof
 pub export fn VP8ParseIntraModeRow(br: *webp.VP8BitReader, dec: *webp.VP8Decoder) c_int {
     var mb_x: c_int = 0;
     while (mb_x < dec.mb_w_) : (mb_x += 1)

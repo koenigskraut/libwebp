@@ -253,3 +253,61 @@ pub inline fn VP8GetBit(noalias br: *VP8BitReader, prob: u32, label: [*c]const u
         return bit;
     }
 }
+
+/// simplified version of VP8GetBit() for prob=0x80 (note shift is always 1 here)
+pub inline fn VP8GetSigned(noalias br: *VP8BitReader, v: c_int, label: [*c]const u8) c_int {
+    _ = label;
+
+    if (br.bits_ < 0) {
+        VP8LoadNewBytes(br);
+    }
+    {
+        const pos: u6 = @intCast(br.bits_);
+        const split: range_t = br.range_ >> 1;
+        const value: range_t = @truncate(br.value_ >> pos);
+        const mask: i32 = (@as(i32, @bitCast(split)) - @as(i32, @bitCast(value))) >> 31; // -1 or 0
+        br.bits_ -= 1;
+        br.range_ +%= @bitCast(mask);
+        br.range_ |= 1;
+        br.value_ -= @as(bit_t, @intCast(((split + 1) & @as(u32, @bitCast(mask))))) << pos;
+        BT_TRACK(br);
+        return (v ^ mask) - mask;
+    }
+}
+
+// static WEBP_INLINE
+pub fn VP8GetBitAlt(noalias br: *VP8BitReader, prob: u32, label: [*c]const u8) bool {
+    _ = label;
+
+    // Don't move this declaration! It makes a big speed difference to store
+    // 'range' *before* calling VP8LoadNewBytes(), even if this function doesn't
+    // alter br.range_ value.
+    var range: range_t = br.range_;
+    if (br.bits_ < 0) {
+        VP8LoadNewBytes(br);
+    }
+    {
+        const pos = br.bits_;
+        const split: range_t = (range * prob) >> 8;
+        const value: range_t = @truncate(br.value_ >> @truncate(@abs(pos)));
+        // int bit;  // Don't use 'const int bit = (value > split);", it's slower.
+        // TODO:                                                 ???  ^^^^^^^^^^^
+        var bit: bool = undefined;
+        if (value > split) {
+            range -%= split +% 1;
+            br.value_ -%= (split +% 1) << @truncate(@abs(pos));
+            bit = true;
+        } else {
+            range = split;
+            bit = false;
+        }
+        if (range <= 0x7e) {
+            const shift = kVP8Log2Range[range];
+            range = kVP8NewRange[range];
+            br.bits_ -= shift;
+        }
+        br.range_ = range;
+        BT_TRACK(br);
+        return bit;
+    }
+}

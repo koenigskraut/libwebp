@@ -11,10 +11,8 @@ const webp = struct {
     usingnamespace @import("../webp/decode.zig");
 
     extern fn VP8InitRandom(rg: [*c]@This().VP8Random, dithering: f32) void;
-    extern fn VP8InitScanline(dec: [*c]@This().VP8Decoder) void;
     extern fn VP8DspInit() void;
     extern fn VP8DecompressAlphaRows(dec: [*c]@This().VP8Decoder, io: [*c]const @This().VP8Io, row: c_int, num_rows: c_int) [*c]const u8;
-    extern fn VP8SetError(dec: [*c]@This().VP8Decoder, @"error": @This().VP8Status, msg: [*c]const u8) c_int;
 
     pub extern fn WebPSetWorkerInterface(winterface: [*c]const @This().WorkerInterface) c_int;
     pub extern fn WebPGetWorkerInterface() [*c]const @This().WorkerInterface;
@@ -22,6 +20,7 @@ const webp = struct {
 
 const assert = std.debug.assert;
 const VP8Status = webp.VP8Status;
+const c_bool = webp.c_bool;
 
 //------------------------------------------------------------------------------
 // Main reconstruction function.
@@ -320,6 +319,7 @@ const DITHER_AMP_TAB_SIZE = 12;
 // roughly, it's dqm->uv_mat_[1]
 const kQuantToDitherAmp = [DITHER_AMP_TAB_SIZE]u8{ 8, 7, 6, 4, 4, 2, 2, 2, 1, 1, 1, 1 };
 
+/// Initialize dithering post-process if needed.
 pub export fn VP8InitDithering(options_arg: ?*const webp.DecoderOptions, dec: *webp.VP8Decoder) void {
     const options = options_arg orelse return;
     const d: c_int = options.dithering_strength;
@@ -490,6 +490,7 @@ fn FinishRow(arg_arg1: ?*anyopaque, arg_arg2: ?*anyopaque) callconv(.C) c_int {
 
 // ------------------------------------------------------------------------------
 
+/// Process the last decoded row (filtering + output).
 pub export fn VP8ProcessRow(dec: *webp.VP8Decoder, io: *webp.VP8Io) c_int {
     var ok: c_int = 1;
     const ctx: *webp.VP8ThreadContext = &dec.thread_ctx_;
@@ -537,6 +538,10 @@ pub export fn VP8ProcessRow(dec: *webp.VP8Decoder, io: *webp.VP8Io) c_int {
 // ------------------------------------------------------------------------------
 // Finish setting up the decoding parameter once user's setup() is called.
 
+/// Call io->setup() and finish setting up scan parameters.
+/// After this call returns, one must always call VP8ExitCritical() with the
+/// same parameters. Both functions should be used in pair. Returns `.Ok`
+/// if ok, otherwise sets and returns the error status on `*dec`.
 pub export fn VP8EnterCritical(dec: *webp.VP8Decoder, io: *webp.VP8Io) VP8Status {
     // Call setup() first. This may trigger additional decoding features on 'io'.
     // Note: Afterward, we must call teardown() no matter what.
@@ -589,7 +594,9 @@ pub export fn VP8EnterCritical(dec: *webp.VP8Decoder, io: *webp.VP8Io) VP8Status
     return .Ok;
 }
 
-pub export fn VP8ExitCritical(dec: *webp.VP8Decoder, io: *webp.VP8Io) c_int {
+/// Must always be called in pair with VP8EnterCritical().
+/// Returns false in case of error.
+pub export fn VP8ExitCritical(dec: *webp.VP8Decoder, io: *webp.VP8Io) c_bool {
     var ok: c_int = 1;
     if (dec.mt_method_ > 0) {
         ok = webp.WebPGetWorkerInterface().*.Sync.?(&dec.worker_);
@@ -628,7 +635,7 @@ pub export fn VP8ExitCritical(dec: *webp.VP8Decoder, io: *webp.VP8Io) c_int {
 const MT_CACHE_LINES = 3;
 const ST_CACHE_LINES = 1; // 1 cache row only for single-threaded case
 
-// Initialize multi/single-thread worker
+/// Initialize multi/single-thread worker
 fn InitThreadContext(dec: *webp.VP8Decoder) bool {
     dec.cache_id_ = 0;
     if (dec.mt_method_ > 0) {
@@ -646,6 +653,8 @@ fn InitThreadContext(dec: *webp.VP8Decoder) bool {
     return true;
 }
 
+/// Return the multi-threading method to use (0=off), depending
+/// on options and bitstream size. Only for lossy decoding.
 pub export fn VP8GetThreadMethod(options: ?*const webp.DecoderOptions, headers: ?*const webp.HeaderStructure, width: c_int, height: c_int) c_int {
     if (options == null or options.?.use_threads == 0) return 0;
     _ = height;
