@@ -41,6 +41,18 @@ pub const DecParams = extern struct {
     emit_alpha_row: OutputRowFunc,
 };
 
+pub const HeaderStructure = extern struct {
+    data: [*c]const u8,
+    data_size: usize,
+    have_all_data: c_bool,
+    offset: usize,
+    alpha_data: [*c]const u8,
+    alpha_data_size: usize,
+    compressed_size: usize,
+    riff_size: usize,
+    is_lossless: c_bool,
+};
+
 /// Returns true if crop dimensions are within image bounds.
 pub fn WebPCheckCropDimensions(image_width: c_int, image_height: c_int, x: c_int, y: c_int, w: c_int, h: c_int) bool {
     return !(x < 0 or y < 0 or w <= 0 or h <= 0 or

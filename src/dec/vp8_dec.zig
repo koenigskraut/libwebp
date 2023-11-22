@@ -1,22 +1,59 @@
 const std = @import("std");
-const c = @cImport({
-    @cInclude("src/utils/random_utils.h");
-    @cInclude("src/utils/thread_utils.h");
-});
 const webp = struct {
     usingnamespace @import("alpha_dec.zig");
     usingnamespace @import("common_dec.zig");
+    usingnamespace @import("../dsp/dsp.zig");
     usingnamespace @import("../utils/bit_reader_utils.zig");
+    usingnamespace @import("../utils/random_utils.zig");
+    usingnamespace @import("../utils/thread_utils.zig");
     usingnamespace @import("../utils/utils.zig");
     usingnamespace @import("../webp/decode.zig");
 };
 
 const c_bool = webp.c_bool;
 
+//------------------------------------------------------------------------------
+// Various defines and enums
+
+// version numbers
+pub const DEC_MAJ_VERSION = 1;
+pub const DEC_MIN_VERSION = 3;
+pub const DEC_REV_VERSION = 2;
+
+// YUV-cache parameters. Cache is 32-bytes wide (= one cacheline).
+// Constraints are: We need to store one 16x16 block of luma samples (y),
+// and two 8x8 chroma blocks (u/v). These are better be 16-bytes aligned,
+// in order to be SIMD-friendly. We also need to store the top, left and
+// top-left samples (from previously decoded blocks), along with four
+// extra top-right samples for luma (intra4x4 prediction only).
+// One possible layout is, using 32 * (17 + 9) bytes:
+//
+//   .+------   <- only 1 pixel high
+//   .|yyyyt.
+//   .|yyyyt.
+//   .|yyyyt.
+//   .|yyyy..
+//   .+--.+--   <- only 1 pixel high
+//   .|uu.|vv
+//   .|uu.|vv
+//
+// Every character is a 4x4 block, with legend:
+//  '.' = unused
+//  'y' = y-samples   'u' = u-samples     'v' = u-samples
+//  '|' = left sample,   '-' = top sample,    '+' = top-left sample
+//  't' = extra top-right sample for 4x4 modes
+pub const YUV_SIZE = (webp.BPS * 17 + webp.BPS * 9);
+pub const Y_OFF = (webp.BPS * 1 + 8);
+pub const U_OFF = (Y_OFF + webp.BPS * 16 + webp.BPS);
+pub const V_OFF = (U_OFF + 16);
+
+/// minimal width under which lossy multi-threading is always disabled
+pub const MIN_WIDTH_FOR_THREADS = 512;
+
 pub const VP8Io = extern struct {
-    pub const VP8IoPutHook = ?*const fn ([*c]const @This()) callconv(.C) c_int;
-    pub const VP8IoSetupHook = ?*const fn ([*c]@This()) callconv(.C) c_int;
-    pub const VP8IoTeardownHook = ?*const fn ([*c]const @This()) callconv(.C) void;
+    pub const PutHook = ?*const fn ([*c]const @This()) callconv(.C) c_int;
+    pub const SetupHook = ?*const fn ([*c]@This()) callconv(.C) c_int;
+    pub const TeardownHook = ?*const fn ([*c]const @This()) callconv(.C) void;
 
     // set by VP8GetHeaders()
     /// picture dimensions, in pixels (invariable).
@@ -50,17 +87,17 @@ pub const VP8Io = extern struct {
     /// in-loop filtering level, e.g.). Should return false in case of error
     /// or abort request. The actual size of the area to update is mb_w x mb_h
     /// in size, taking cropping into account.
-    put: VP8IoPutHook,
+    put: PutHook,
 
     /// called just before starting to decode the blocks.
     /// Must return false in case of setup error, true otherwise. If false is
     /// returned, teardown() will NOT be called. But if the setup succeeded
     /// and true is returned, then teardown() will always be called afterward.
-    setup: VP8IoSetupHook,
+    setup: SetupHook,
 
     /// Called just after block decoding is finished (or when an error occurred
     /// during put()). Is NOT called if setup() failed.
-    teardown: VP8IoTeardownHook,
+    teardown: TeardownHook,
 
     /// this is a recommendation for the user-side yuv->rgb converter. This flag
     /// is set when calling setup() hook and can be overwritten by it. It then
@@ -104,7 +141,7 @@ pub inline fn VP8InitIo(io: ?*VP8Io) bool {
 
 // Internal, version-checked, entry point
 pub fn VP8InitIoInternal(io: ?*VP8Io, version: c_int) bool { // export
-    if (c.WEBP_ABI_IS_INCOMPATIBLE(version, webp.DECODER_ABI_VERSION)) {
+    if (webp.WEBP_ABI_IS_INCOMPATIBLE(version, webp.DECODER_ABI_VERSION)) {
         return false; // mismatch error
     }
     if (io) |io_ptr| io_ptr.* = std.mem.zeroes(VP8Io);
@@ -264,7 +301,7 @@ pub const VP8Decoder = extern struct {
     segment_hdr_: VP8SegmentHeader,
 
     /// Worker
-    worker_: c.WebPWorker,
+    worker_: webp.Worker,
     /// multi-thread method:
     /// - 0 = off
     /// - 1 = [parse+recon][filter]
@@ -296,7 +333,7 @@ pub const VP8Decoder = extern struct {
     /// whether to use dithering or not
     dither_: c_int,
     /// random generator for dithering
-    dithering_rg_: c.VP8Random,
+    dithering_rg_: webp.VP8Random,
 
     /// dequantization (one set of DC/AC dequant factor per segment)
     dqm_: [webp.NUM_MB_SEGMENTS]VP8QuantMatrix,
