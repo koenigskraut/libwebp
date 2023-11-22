@@ -1,6 +1,35 @@
 const std = @import("std");
+const webp = struct {
+    usingnamespace @import("../webp/encode.zig");
+};
 
+const assert = std.debug.assert;
 pub const c_bool = c_int;
+//------------------------------------------------------------------------------
+// Pixel copying.
+
+/// Copy width x height pixels from `src` to `dst` honoring the strides.
+pub export fn WebPCopyPlane(src_arg: [*]const u8, src_stride: c_int, dst_arg: [*]u8, dst_stride: c_int, width: c_int, height: c_int) void {
+    assert(@abs(src_stride) >= width and @abs(dst_stride) >= width);
+    var src, var dst = .{ src_arg, dst_arg };
+    var h = height;
+    while (h > 0) : (h -= 1) {
+        @memcpy(dst[0..@abs(width)], src[0..@abs(width)]);
+        src = offsetPtr(src, src_stride);
+        dst = offsetPtr(dst, dst_stride);
+    }
+}
+
+/// Copy ARGB pixels from `src` to `dst` honoring strides. `src` and `dst` are
+/// assumed to be already allocated and using ARGB data.
+pub export fn WebPCopyPixels(src: *const webp.Picture, dst: *webp.Picture) void {
+    assert(src.width == dst.width and src.height == dst.height);
+    assert(src.use_argb != 0 and dst.use_argb != 0);
+    WebPCopyPlane(@ptrCast(src.argb), 4 * src.argb_stride, @ptrCast(dst.argb), 4 * dst.argb_stride, 4 * src.width, src.height);
+}
+
+
+//------------------------------------------------------------------------------
 
 // Returns (int)floor(log2(n)). n must be > 0.
 pub inline fn BitsLog2Floor(n: u32) c_int {
@@ -50,4 +79,8 @@ pub inline fn offsetPtr(ptr: anytype, offset: i64) @TypeOf(ptr) {
 pub inline fn diffPtr(minuend: anytype, subtrahend: @TypeOf(minuend)) isize {
     const m, const s = .{ @intFromPtr(minuend), @intFromPtr(subtrahend) };
     return if (m > s) @intCast(m - s) else -@as(isize, @intCast(s - m));
+}
+
+pub inline fn WEBP_ABI_IS_INCOMPATIBLE(a: anytype, b: anytype) @TypeOf((a >> @as(c_int, 8)) != (b >> @as(c_int, 8))) {
+    return (a >> @as(c_int, 8)) != (b >> @as(c_int, 8));
 }

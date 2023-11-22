@@ -129,7 +129,7 @@ pub const VP8PictureHeader = extern struct {
 
 /// segment features
 pub const VP8SegmentHeader = extern struct {
-    use_segment_: c_int,
+    use_segment_: c_int, // c_bool
     update_map_: c_int, // whether to update the segment map or not
     absolute_delta_: c_int, // absolute or delta values for quantizer and filter
     quantizer_: [webp.NUM_MB_SEGMENTS]i8, // quantization changes
@@ -325,8 +325,8 @@ pub const VP8Decoder = extern struct {
     cache_y_: [*c]u8, // macroblock row for storing unfiltered samples
     cache_u_: [*c]u8,
     cache_v_: [*c]u8,
-    cache_y_stride_: c_bool,
-    cache_uv_stride_: c_bool,
+    cache_y_stride_: c_int,
+    cache_uv_stride_: c_int,
 
     /// main memory chunk for the above data. Persistent.
     mem_: ?*anyopaque,

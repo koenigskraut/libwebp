@@ -6,7 +6,6 @@ const webp = struct {
     usingnamespace @import("../webp/decode.zig");
 
     extern fn WebPRescalerGetScaledDimensions(src_width: c_int, src_height: c_int, scaled_width: ?*c_int, scaled_height: ?*c_int) c_int;
-    extern fn WebPCopyPlane(src: [*c]const u8, src_stride: c_int, dst: [*c]u8, dst_stride: c_int, width: c_int, height: c_int) void;
 };
 
 const assert = std.debug.assert;
