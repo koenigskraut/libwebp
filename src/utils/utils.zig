@@ -2,6 +2,11 @@ const std = @import("std");
 
 pub const c_bool = c_int;
 
+// Returns (int)floor(log2(n)). n must be > 0.
+pub inline fn BitsLog2Floor(n: u32) c_int {
+    return @as(c_int, 31) ^ @clz(n);
+}
+
 pub fn have_x86_feat(cpu: std.Target.Cpu, feat: std.Target.x86.Feature) bool {
     return switch (cpu.arch) {
         .x86, .x86_64 => std.Target.x86.featureSetHas(cpu.features, feat),
@@ -37,3 +42,12 @@ pub fn have_mips_feat(cpu: std.Target.Cpu, feat: std.Target.mips.Feature) bool {
 pub extern fn WebPSafeMalloc(nmemb: u64, size: usize) ?*anyopaque;
 pub extern fn WebPSafeCalloc(nmemb: u64, size: usize) ?*anyopaque;
 pub extern fn WebPSafeFree(ptr: ?*anyopaque) void;
+
+pub inline fn offsetPtr(ptr: anytype, offset: i64) @TypeOf(ptr) {
+    return if (offset > 0) ptr + @abs(offset) else ptr - @abs(offset);
+}
+
+pub inline fn diffPtr(minuend: anytype, subtrahend: @TypeOf(minuend)) isize {
+    const m, const s = .{ @intFromPtr(minuend), @intFromPtr(subtrahend) };
+    return if (m > s) @intCast(m - s) else -@as(isize, @intCast(s - m));
+}

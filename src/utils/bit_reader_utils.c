@@ -22,36 +22,36 @@
 //------------------------------------------------------------------------------
 // VP8BitReader
 
-void VP8BitReaderSetBuffer(VP8BitReader* const br,
-                           const uint8_t* const start,
-                           size_t size) {
-  br->buf_     = start;
-  br->buf_end_ = start + size;
-  br->buf_max_ =
-      (size >= sizeof(lbit_t)) ? start + size - sizeof(lbit_t) + 1
-                               : start;
-}
+// void VP8BitReaderSetBuffer(VP8BitReader* const br,
+//                            const uint8_t* const start,
+//                            size_t size) {
+//   br->buf_     = start;
+//   br->buf_end_ = start + size;
+//   br->buf_max_ =
+//       (size >= sizeof(lbit_t)) ? start + size - sizeof(lbit_t) + 1
+//                                : start;
+// }
 
-void VP8InitBitReader(VP8BitReader* const br,
-                      const uint8_t* const start, size_t size) {
-  assert(br != NULL);
-  assert(start != NULL);
-  assert(size < (1u << 31));   // limit ensured by format and upstream checks
-  br->range_   = 255 - 1;
-  br->value_   = 0;
-  br->bits_    = -8;   // to load the very first 8bits
-  br->eof_     = 0;
-  VP8BitReaderSetBuffer(br, start, size);
-  VP8LoadNewBytes(br);
-}
+// void VP8InitBitReader(VP8BitReader* const br,
+//                       const uint8_t* const start, size_t size) {
+//   assert(br != NULL);
+//   assert(start != NULL);
+//   assert(size < (1u << 31));   // limit ensured by format and upstream checks
+//   br->range_   = 255 - 1;
+//   br->value_   = 0;
+//   br->bits_    = -8;   // to load the very first 8bits
+//   br->eof_     = 0;
+//   VP8BitReaderSetBuffer(br, start, size);
+//   VP8LoadNewBytes(br);
+// }
 
-void VP8RemapBitReader(VP8BitReader* const br, ptrdiff_t offset) {
-  if (br->buf_ != NULL) {
-    br->buf_ += offset;
-    br->buf_end_ += offset;
-    br->buf_max_ += offset;
-  }
-}
+// void VP8RemapBitReader(VP8BitReader* const br, ptrdiff_t offset) {
+//   if (br->buf_ != NULL) {
+//     br->buf_ += offset;
+//     br->buf_end_ += offset;
+//     br->buf_max_ += offset;
+//   }
+// }
 
 const uint8_t kVP8Log2Range[128] = {
      7, 6, 6, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4,
@@ -85,37 +85,37 @@ const uint8_t kVP8NewRange[128] = {
   241, 243, 245, 247, 249, 251, 253, 127
 };
 
-void VP8LoadFinalBytes(VP8BitReader* const br) {
-  assert(br != NULL && br->buf_ != NULL);
-  // Only read 8bits at a time
-  if (br->buf_ < br->buf_end_) {
-    br->bits_ += 8;
-    br->value_ = (bit_t)(*br->buf_++) | (br->value_ << 8);
-  } else if (!br->eof_) {
-    br->value_ <<= 8;
-    br->bits_ += 8;
-    br->eof_ = 1;
-  } else {
-    br->bits_ = 0;  // This is to avoid undefined behaviour with shifts.
-  }
-}
+// void VP8LoadFinalBytes(VP8BitReader* const br) {
+//   assert(br != NULL && br->buf_ != NULL);
+//   // Only read 8bits at a time
+//   if (br->buf_ < br->buf_end_) {
+//     br->bits_ += 8;
+//     br->value_ = (bit_t)(*br->buf_++) | (br->value_ << 8);
+//   } else if (!br->eof_) {
+//     br->value_ <<= 8;
+//     br->bits_ += 8;
+//     br->eof_ = 1;
+//   } else {
+//     br->bits_ = 0;  // This is to avoid undefined behaviour with shifts.
+//   }
+// }
 
 //------------------------------------------------------------------------------
 // Higher-level calls
 
-uint32_t VP8GetValue(VP8BitReader* const br, int bits, const char label[]) {
-  uint32_t v = 0;
-  while (bits-- > 0) {
-    v |= VP8GetBit(br, 0x80, label) << bits;
-  }
-  return v;
-}
+// uint32_t VP8GetValue(VP8BitReader* const br, int bits, const char label[]) {
+//   uint32_t v = 0;
+//   while (bits-- > 0) {
+//     v |= VP8GetBit(br, 0x80, label) << bits;
+//   }
+//   return v;
+// }
 
-int32_t VP8GetSignedValue(VP8BitReader* const br, int bits,
-                          const char label[]) {
-  const int value = VP8GetValue(br, bits, label);
-  return VP8Get(br, label) ? -value : value;
-}
+// int32_t VP8GetSignedValue(VP8BitReader* const br, int bits,
+//                           const char label[]) {
+//   const int value = VP8GetValue(br, bits, label);
+//   return VP8Get(br, label) ? -value : value;
+// }
 
 //------------------------------------------------------------------------------
 // VP8LBitReader
