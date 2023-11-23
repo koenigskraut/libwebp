@@ -102,8 +102,12 @@ pub inline fn offsetPtr(ptr: anytype, offset: i64) @TypeOf(ptr) {
 }
 
 pub inline fn diffPtr(minuend: anytype, subtrahend: @TypeOf(minuend)) isize {
+    const info = @typeInfo(@TypeOf(minuend));
+    if (info != .Pointer) @compileError("not a pointer");
+    const child_size: isize = @intCast(@sizeOf(info.Pointer.child));
     const m, const s = .{ @intFromPtr(minuend), @intFromPtr(subtrahend) };
-    return if (m > s) @intCast(m - s) else -@as(isize, @intCast(s - m));
+    const diff: isize = if (m >= s) @intCast(m - s) else -@as(isize, @intCast(s - m));
+    return @divExact(diff, child_size);
 }
 
 pub inline fn WEBP_ABI_IS_INCOMPATIBLE(a: anytype, b: anytype) @TypeOf((a >> @as(c_int, 8)) != (b >> @as(c_int, 8))) {
