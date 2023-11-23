@@ -17,16 +17,14 @@ pub const VP8LColorCache = extern struct {
 
 const kHashMul: u32 = 0x1e35a7bd;
 
-// static WEBP_UBSAN_IGNORE_UNSIGNED_OVERFLOW WEBP_INLINE
-// int VP8LHashPix(uint32_t argb, int shift) {
-//   return (int)((argb * kHashMul) >> shift);
-// }
+pub inline fn VP8LHashPix(argb: u32, shift: c_int) c_int {
+    return @intCast((argb *% kHashMul) >> @intCast(shift));
+}
 
-// static WEBP_INLINE uint32_t VP8LColorCacheLookup(
-//     const VP8LColorCache* const cc, uint32_t key) {
-//   assert((key >> cc->hash_bits_) == 0u);
-//   return cc->colors_[key];
-// }
+pub inline fn VP8LColorCacheLookup(cc: *const VP8LColorCache, key: u32) u32 {
+    assert((key >> @intCast(cc.hash_bits_)) == 0);
+    return cc.colors_[@intCast(key)];
+}
 
 // static WEBP_INLINE void VP8LColorCacheSet(const VP8LColorCache* const cc,
 //                                           uint32_t key, uint32_t argb) {
@@ -34,11 +32,10 @@ const kHashMul: u32 = 0x1e35a7bd;
 //   cc->colors_[key] = argb;
 // }
 
-// static WEBP_INLINE void VP8LColorCacheInsert(const VP8LColorCache* const cc,
-//                                              uint32_t argb) {
-//   const int key = VP8LHashPix(argb, cc->hash_shift_);
-//   cc->colors_[key] = argb;
-// }
+pub inline fn VP8LColorCacheInsert(cc: *const VP8LColorCache, argb: u32) void {
+    const key: c_int = VP8LHashPix(argb, cc.*.hash_shift_);
+    cc.colors_[@intCast(key)] = argb;
+}
 
 // static WEBP_INLINE int VP8LColorCacheGetIndex(const VP8LColorCache* const cc,
 //                                               uint32_t argb) {

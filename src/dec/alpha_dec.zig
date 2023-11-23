@@ -8,10 +8,7 @@ const webp = struct {
     usingnamespace @import("../webp/decode.zig");
     usingnamespace @import("../webp/format_constants.zig");
 
-    extern fn VP8LDelete(dec: [*c]webp.VP8LDecoder) void;
     extern fn VP8FiltersInit() void;
-    extern fn VP8LDecodeAlphaHeader(alph_dec: ?*ALPHDecoder, data: [*c]const u8, data_size: usize) c_int;
-    extern fn VP8LDecodeAlphaImageStream(alph_dec: ?*ALPHDecoder, last_row: c_int) c_int;
     extern fn WebPDequantizeLevels(data: [*c]u8, width: c_int, height: c_int, stride: c_int, strength: c_int) c_int;
 
     const WebPUnfilterFunc = ?*const fn ([*c]const u8, [*c]const u8, [*c]u8, c_int) callconv(.C) void;

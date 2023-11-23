@@ -162,7 +162,7 @@ const dec_srcs: StrSlice = &.{
     // "src/dec/quant_dec.c",
     // "src/dec/tree_dec.c",
     // "src/dec/vp8_dec.c",
-    "src/dec/vp8l_dec.c",
+    // "src/dec/vp8l_dec.c",
     "src/dec/webp_dec.c",
 };
 
