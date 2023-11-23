@@ -275,7 +275,7 @@ const mux_srcs: StrSlice = &.{
 };
 
 const utils_dec_srsc: StrSlice = &.{
-    "src/utils/bit_reader_utils.c",
+    // "src/utils/bit_reader_utils.c",
     "src/utils/color_cache_utils.c",
     "src/utils/filters_utils.c",
     "src/utils/huffman_utils.c",

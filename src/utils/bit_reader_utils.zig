@@ -2,6 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const webp = struct {
     usingnamespace @import("utils.zig");
+    usingnamespace @import("endian_inl_utils.zig");
 };
 
 const assert = std.debug.assert;
@@ -67,24 +68,6 @@ pub const VP8BitReader = extern struct {
     buf_max_: [*c]const u8,
     /// true if input is exhausted
     eof_: c_bool,
-};
-
-/// right now, this bit-reader can only use 64bit.
-const vp8l_val_t = u64;
-
-pub const VP8LBitReader = extern struct {
-    /// pre-fetched bits
-    val_: vp8l_val_t,
-    /// input byte buffer
-    buf_: [*c]const u8,
-    /// buffer length
-    len_: usize,
-    /// byte position in buf_
-    pos_: usize,
-    /// current bit-reading position in val_
-    bit_pos_: c_int,
-    /// true if a bit was read past the end of buffer
-    eos_: c_int,
 };
 
 /// Initialize the bit reader and the boolean decoder.
@@ -184,6 +167,146 @@ pub export fn VP8GetSignedValue(br: *VP8BitReader, bits: u32, label: [*c]const u
 
 pub inline fn VP8Get(br: *VP8BitReader, label: [*c]const u8) bool {
     return VP8GetValue(br, 1, label) & 1 != 0;
+}
+
+// -----------------------------------------------------------------------------
+// Bitreader for lossless format
+
+/// maximum number of bits (inclusive) the bit-reader can handle:
+const VP8L_MAX_NUM_BIT_READ = 24;
+
+/// Number of bits prefetched (= bit-size of vp8l_val_t).
+const VP8L_LBITS = 64;
+/// Minimum number of bytes ready after VP8LFillBitWindow.
+const VP8L_WBITS = 32;
+
+/// right now, this bit-reader can only use 64bit.
+pub const vp8l_val_t = u64;
+
+pub const VP8LBitReader = extern struct {
+    /// pre-fetched bits
+    val_: vp8l_val_t,
+    /// input byte buffer
+    buf_: [*c]const u8,
+    /// buffer length
+    len_: usize,
+    /// byte position in buf_
+    pos_: usize,
+    /// current bit-reading position in val_
+    bit_pos_: c_int,
+    /// true if a bit was read past the end of buffer
+    eos_: c_bool,
+};
+
+const VP8L_LOG8_WBITS = 4; // Number of bytes needed to store VP8L_WBITS bits.
+const VP8L_USE_FAST_LOAD = cpu.arch.isAARCH64() or cpu.arch.isArmOrThumb() or cpu.arch.isX86();
+
+const kBitMask = [VP8L_MAX_NUM_BIT_READ + 1]u32{ 0, 0x000001, 0x000003, 0x000007, 0x00000f, 0x00001f, 0x00003f, 0x00007f, 0x0000ff, 0x0001ff, 0x0003ff, 0x0007ff, 0x000fff, 0x001fff, 0x003fff, 0x007fff, 0x00ffff, 0x01ffff, 0x03ffff, 0x07ffff, 0x0fffff, 0x1fffff, 0x3fffff, 0x7fffff, 0xffffff };
+
+pub export fn VP8LInitBitReader(br: *VP8LBitReader, start: [*]const u8, length_arg: usize) void {
+    var value: vp8l_val_t = 0;
+    var length = length_arg;
+    assert(length < 0xfffffff8); // can't happen with a RIFF chunk.
+
+    br.len_ = length;
+    br.val_ = 0;
+    br.bit_pos_ = 0;
+    br.eos_ = 0;
+
+    if (length > @sizeOf(@TypeOf(br.val_))) {
+        length = @sizeOf(@TypeOf(br.val_));
+    }
+    for (0..length) |i| {
+        value |= @as(vp8l_val_t, start[i]) << @truncate(8 * i);
+    }
+    br.val_ = value;
+    br.pos_ = length;
+    br.buf_ = start;
+}
+
+///  Sets a new data buffer.
+pub export fn VP8LBitReaderSetBuffer(br: *VP8LBitReader, buf: [*]const u8, len: usize) void {
+    assert(len < 0xfffffff8); // can't happen with a RIFF chunk.
+    br.buf_ = buf;
+    br.len_ = len;
+    // pos_ > len_ should be considered a param error.
+    br.eos_ = @intFromBool((br.pos_ > br.len_) or VP8LIsEndOfStream(br));
+}
+
+// Returns true if there was an attempt at reading bit past the end of
+// the buffer. Doesn't set br->eos_ flag.
+pub inline fn VP8LIsEndOfStream(br: *const VP8LBitReader) bool {
+    assert(br.pos_ <= br.len_);
+    return br.eos_ != 0 or ((br.pos_ == br.len_) and (br.bit_pos_ > VP8L_LBITS));
+}
+
+fn VP8LSetEndOfStream(br: *VP8LBitReader) void {
+    br.eos_ = 1;
+    br.bit_pos_ = 0; // To avoid undefined behaviour with shifts.
+}
+
+/// If not at EOS, reload up to VP8L_LBITS byte-by-byte
+fn ShiftBytes(br: *VP8LBitReader) void {
+    while (br.bit_pos_ >= 8 and br.pos_ < br.len_) {
+        br.val_ >>= 8;
+        br.val_ |= (@as(vp8l_val_t, br.buf_[br.pos_])) << (VP8L_LBITS - 8);
+        br.pos_ +%= 1;
+        br.bit_pos_ -= 8;
+    }
+
+    if (VP8LIsEndOfStream(br)) VP8LSetEndOfStream(br);
+}
+
+// Return the prefetched bits, so they can be looked up.
+pub inline fn VP8LPrefetchBits(br: *VP8LBitReader) u32 {
+    return @truncate(br.val_ >> @intCast(br.bit_pos_ & (VP8L_LBITS - 1)));
+}
+
+// For jumping over a number of bits in the bit stream when accessed with
+// VP8LPrefetchBits and VP8LFillBitWindow.
+// This function does *not* set br->eos_, since it's speed-critical.
+// Use with extreme care!
+pub inline fn VP8LSetBitPos(br: *VP8LBitReader, val: c_int) void {
+    br.bit_pos_ = val;
+}
+
+export fn VP8LDoFillBitWindow(br: *VP8LBitReader) void {
+    assert(br.bit_pos_ >= VP8L_WBITS);
+    if (comptime VP8L_USE_FAST_LOAD) {
+        if (br.pos_ + @sizeOf(@TypeOf(br.val_)) < br.len_) {
+            br.val_ >>= VP8L_WBITS;
+            br.bit_pos_ -= VP8L_WBITS;
+            br.val_ |= @as(vp8l_val_t, webp.HToLE32(webp.WebPMemToUint32(br.buf_ + br.pos_))) <<
+                (VP8L_LBITS - VP8L_WBITS);
+            br.pos_ +%= VP8L_LOG8_WBITS;
+            return;
+        }
+    }
+    ShiftBytes(br); // Slow path.
+}
+
+// Advances the read buffer by 4 bytes to make room for reading next 32 bits.
+// Speed critical, but infrequent part of the code can be non-inlined.
+pub inline fn VP8LFillBitWindow(br: *VP8LBitReader) void {
+    if (br.bit_pos_ >= VP8L_WBITS) VP8LDoFillBitWindow(br);
+}
+
+// Reads the specified number of bits from read buffer.
+// Flags an error in case end_of_stream or n_bits is more than the allowed limit
+// of VP8L_MAX_NUM_BIT_READ (inclusive).
+// Flags eos_ if this read attempt is going to cross the read buffer.
+pub export fn VP8LReadBits(br: *VP8LBitReader, n_bits: c_uint) u32 {
+    // Flag an error if end_of_stream or n_bits is more than allowed limit.
+    if (br.eos_ == 0 and n_bits <= VP8L_MAX_NUM_BIT_READ) {
+        const val: u32 = VP8LPrefetchBits(br) & kBitMask[n_bits];
+        const new_bits: c_int = br.bit_pos_ + @as(c_int, @intCast(n_bits));
+        br.bit_pos_ = new_bits;
+        ShiftBytes(br);
+        return val;
+    } else {
+        VP8LSetEndOfStream(br);
+        return 0;
+    }
 }
 
 //------------------------------------------------------------------------------

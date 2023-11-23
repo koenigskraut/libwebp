@@ -14,6 +14,23 @@ pub inline fn WEBP_ALIGN(PTR: anytype) usize {
     return (@intFromPtr(PTR) + WEBP_ALIGN_CST) & ~@as(usize, WEBP_ALIGN_CST);
 }
 
+// memcpy() is the safe way of moving potentially unaligned 32b memory.
+pub inline fn WebPMemToUint32(ptr: [*c]const u8) u32 {
+    return @bitCast(ptr[0..4].*);
+}
+
+pub inline fn WebPMemToInt32(ptr: [*c]const u8) i32 {
+    return @bitCast(ptr[0..4].*);
+}
+
+pub inline fn WebPUint32ToMem(ptr: [*c]u8, val: u32) void {
+    @memcpy(ptr[0..4], @as(*[4]u8, @ptrCast(&val)));
+}
+
+pub inline fn WebPInt32ToMem(ptr: [*c]u8, val: i32) void {
+    @memcpy(ptr[0..4], @as(*[4]u8, @ptrCast(&val)));
+}
+
 //------------------------------------------------------------------------------
 // Pixel copying.
 
