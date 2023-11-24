@@ -6,53 +6,50 @@ const webp = struct {
 const assert = std.debug.assert;
 const c_bool = webp.c_bool;
 
-// Main color cache struct.
-pub const VP8LColorCache = extern struct {
-    /// color entries
-    colors_: [*c]u32,
-    /// Hash shift: 32 - hash_bits_.
-    hash_shift_: c_int,
-    hash_bits_: c_int,
-};
-
 const kHashMul: u32 = 0x1e35a7bd;
 
 pub inline fn VP8LHashPix(argb: u32, shift: c_int) c_int {
     return @intCast((argb *% kHashMul) >> @intCast(shift));
 }
 
-pub inline fn VP8LColorCacheLookup(cc: *const VP8LColorCache, key: u32) u32 {
-    assert((key >> @intCast(cc.hash_bits_)) == 0);
-    return cc.colors_[@intCast(key)];
-}
+/// Main color cache struct.
+pub const VP8LColorCache = extern struct {
+    /// color entries
+    colors_: [*c]u32,
+    /// Hash shift: 32 - hash_bits_.
+    hash_shift_: c_int,
+    hash_bits_: c_int,
 
-// static WEBP_INLINE void VP8LColorCacheSet(const VP8LColorCache* const cc,
-//                                           uint32_t key, uint32_t argb) {
-//   assert((key >> cc->hash_bits_) == 0u);
-//   cc->colors_[key] = argb;
-// }
+    pub inline fn lookup(cc: *const VP8LColorCache, key: u32) u32 {
+        assert((key >> @intCast(cc.hash_bits_)) == 0);
+        return cc.colors_[key];
+    }
 
-pub inline fn VP8LColorCacheInsert(cc: *const VP8LColorCache, argb: u32) void {
-    const key: c_int = VP8LHashPix(argb, cc.*.hash_shift_);
-    cc.colors_[@intCast(key)] = argb;
-}
+    pub inline fn set(cc: *const VP8LColorCache, key: u32, argb: u32) void {
+        assert((key >> @intCast(cc.hash_bits_)) == 0);
+        cc.colors_[key] = argb;
+    }
 
-// static WEBP_INLINE int VP8LColorCacheGetIndex(const VP8LColorCache* const cc,
-//                                               uint32_t argb) {
-//   return VP8LHashPix(argb, cc->hash_shift_);
-// }
+    pub inline fn insert(cc: *const VP8LColorCache, argb: u32) void {
+        const key: c_int = VP8LHashPix(argb, cc.*.hash_shift_);
+        cc.colors_[@intCast(key)] = argb;
+    }
 
-// // Return the key if cc contains argb, and -1 otherwise.
-// static WEBP_INLINE int VP8LColorCacheContains(const VP8LColorCache* const cc,
-//                                               uint32_t argb) {
-//   const int key = VP8LHashPix(argb, cc->hash_shift_);
-//   return (cc->colors_[key] == argb) ? key : -1;
-// }
+    pub inline fn getIndex(cc: *const VP8LColorCache, argb: u32) c_int {
+        return VP8LHashPix(argb, cc.hash_shift_);
+    }
+
+    /// Return the key if cc contains argb, and -1 otherwise.
+    pub inline fn contains(cc: *const VP8LColorCache, argb: u32) c_int {
+        const key = VP8LHashPix(argb, cc.hash_shift_);
+        return if (cc.colors_[@intCast(key)] == argb) key else -1;
+    }
+};
 
 //------------------------------------------------------------------------------
 
-// Initializes the color cache with 'hash_bits' bits for the keys.
-// Returns false in case of memory error.
+/// Initializes the color cache with 'hash_bits' bits for the keys.
+/// Returns false in case of memory error.
 pub export fn VP8LColorCacheInit(color_cache: *VP8LColorCache, hash_bits: c_int) c_bool {
     const hash_size = @as(c_int, 1) << @intCast(hash_bits);
     assert(hash_bits > 0);
@@ -69,7 +66,7 @@ pub export fn VP8LColorCacheCopy(src: *const VP8LColorCache, dst: *VP8LColorCach
     @memcpy(dst.colors_[0..len], src.colors_[0..len]);
 }
 
-// Delete the memory associated to color cache.
+/// Delete the memory associated to color cache.
 pub export fn VP8LColorCacheClear(color_cache: ?*VP8LColorCache) void {
     if (color_cache) |cc| {
         webp.WebPSafeFree(cc.colors_);

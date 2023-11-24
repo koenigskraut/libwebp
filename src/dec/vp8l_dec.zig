@@ -1279,7 +1279,7 @@ fn DecodeImageData(dec: *VP8LDecoder, data: [*c]u32, width: c_int, height: c_int
                     }
                     if (color_cache) |cc| {
                         while (last_cached < src) {
-                            webp.VP8LColorCacheInsert(@ptrCast(cc), last_cached[0]);
+                            cc.insert(last_cached[0]);
                             last_cached += 1;
                         }
                     }
@@ -1302,7 +1302,7 @@ fn DecodeImageData(dec: *VP8LDecoder, data: [*c]u32, width: c_int, height: c_int
                     }
                     if (color_cache) |cc| {
                         while (last_cached < src) {
-                            webp.VP8LColorCacheInsert(@ptrCast(cc), last_cached[0]);
+                            cc.insert(last_cached[0]);
                             last_cached += 1;
                         }
                     }
@@ -1336,7 +1336,7 @@ fn DecodeImageData(dec: *VP8LDecoder, data: [*c]u32, width: c_int, height: c_int
                     }
                     if (color_cache) |cc| {
                         while (last_cached < src) {
-                            webp.VP8LColorCacheInsert(@ptrCast(cc), last_cached[0]);
+                            cc.insert(last_cached[0]);
                             last_cached += 1;
                         }
                     }
@@ -1370,9 +1370,9 @@ fn DecodeImageData(dec: *VP8LDecoder, data: [*c]u32, width: c_int, height: c_int
             // 'length'), the following holds true.
             assert(src <= src_end);
             if (col & mask != 0) htree_group = GetHtreeGroupForPos(hdr, col, row);
-            if (color_cache != null) {
+            if (color_cache) |cc| {
                 while (last_cached < src) {
-                    webp.VP8LColorCacheInsert(@ptrCast(color_cache), last_cached[0]);
+                    cc.insert(last_cached[0]);
                     last_cached += 1;
                 }
             }
@@ -1380,10 +1380,10 @@ fn DecodeImageData(dec: *VP8LDecoder, data: [*c]u32, width: c_int, height: c_int
             const key = code - len_code_limit;
             assert(color_cache != null);
             while (last_cached < src) {
-                webp.VP8LColorCacheInsert(@ptrCast(color_cache), last_cached[0]);
+                color_cache.?.insert(last_cached[0]);
                 last_cached += 1;
             }
-            src.* = webp.VP8LColorCacheLookup(@ptrCast(color_cache), @intCast(key));
+            src.* = color_cache.?.lookup(@intCast(key));
             // goto AdvanceByOne;
             {
                 src += 1;
@@ -1396,7 +1396,7 @@ fn DecodeImageData(dec: *VP8LDecoder, data: [*c]u32, width: c_int, height: c_int
                     }
                     if (color_cache) |cc| {
                         while (last_cached < src) {
-                            webp.VP8LColorCacheInsert(@ptrCast(cc), last_cached[0]);
+                            cc.insert(last_cached[0]);
                             last_cached += 1;
                         }
                     }
