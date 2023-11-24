@@ -157,7 +157,7 @@ const dec_srcs: StrSlice = &.{
     // "src/dec/alpha_dec.c",
     // "src/dec/buffer_dec.c",
     // "src/dec/frame_dec.c",
-    "src/dec/idec_dec.c",
+    // "src/dec/idec_dec.c",
     // "src/dec/io_dec.c",
     // "src/dec/quant_dec.c",
     // "src/dec/tree_dec.c",

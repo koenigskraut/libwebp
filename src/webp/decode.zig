@@ -1,3 +1,7 @@
+const webp = struct {
+    extern fn WebPGetFeaturesInternal([*c]const u8, usize, [*c]BitstreamFeatures, c_int) VP8Status;
+};
+
 pub const DECODER_ABI_VERSION = 0x0209;
 
 pub const VP8Error = error{
@@ -182,6 +186,21 @@ pub const BitstreamFeatures = extern struct {
     /// padding for later use
     pad: [5]u32,
 };
+
+// Retrieve features from the bitstream. The *features structure is filled
+// with information gathered from the bitstream.
+// Returns `VP8Status.Ok` when the features are successfully retrieved. Returns
+// `VP8Status.NotEnoughData` when more data is needed to retrieve the
+// features from headers. Returns error in other cases.
+// Note: The following chunk sequences (before the raw VP8/VP8L data) are
+// considered valid by this function:
+// RIFF + VP8(L)
+// RIFF + VP8X + (optional chunks) + VP8(L)
+// ALPH + VP8 <-- Not a valid WebP format: only allowed for internal purpose.
+// VP8(L)     <-- Not a valid WebP format: only allowed for internal purpose.
+pub inline fn WebPGetFeatures(data: [*c]const u8, data_size: usize, features: ?*BitstreamFeatures) VP8Status {
+    return webp.WebPGetFeaturesInternal(data, data_size, features, DECODER_ABI_VERSION);
+}
 
 /// Decoding options.
 pub const DecoderOptions = extern struct {
