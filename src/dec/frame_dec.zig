@@ -11,7 +11,6 @@ const webp = struct {
     usingnamespace @import("../utils/utils.zig");
     usingnamespace @import("../webp/decode.zig");
 
-    extern fn VP8InitRandom(rg: [*c]@This().VP8Random, dithering: f32) void;
     extern fn VP8DspInit() void;
 };
 
