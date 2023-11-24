@@ -288,7 +288,7 @@ const kBModesProba = [webp.NUM_BMODES][webp.NUM_BMODES][webp.NUM_BMODES - 1]u8{
     },
 };
 
-pub export fn VP8ResetProba(proba: *webp.VP8Proba) void {
+pub fn VP8ResetProba(proba: *webp.VP8Proba) void {
     @memset(&proba.segments_, 255);
     // proba->bands_[][] is initialized later
 }
@@ -387,7 +387,7 @@ fn ParseIntraMode(br: *webp.VP8BitReader, dec: *webp.VP8Decoder, mb_x: c_int) vo
 }
 
 /// parses one row of intra mode data in partition 0, returns !eof
-pub export fn VP8ParseIntraModeRow(br: *webp.VP8BitReader, dec: *webp.VP8Decoder) c_int {
+pub fn VP8ParseIntraModeRow(br: *webp.VP8BitReader, dec: *webp.VP8Decoder) c_int {
     var mb_x: c_int = 0;
     while (mb_x < dec.mb_w_) : (mb_x += 1)
         ParseIntraMode(br, dec, mb_x);
@@ -539,7 +539,7 @@ const kBands = [16 + 1]u8{
     0, // extra entry as sentinel
 };
 
-pub export fn VP8ParseProba(br: *webp.VP8BitReader, dec: *webp.VP8Decoder) void {
+pub fn VP8ParseProba(br: *webp.VP8BitReader, dec: *webp.VP8Decoder) void {
     const proba: *webp.VP8Proba = &dec.proba_;
     for (CoeffsUpdateProba, 0..) |c_types, type_i| {
         for (c_types, 0..) |c_bands, band_i| {

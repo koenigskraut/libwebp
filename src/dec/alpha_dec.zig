@@ -158,7 +158,7 @@ fn AllocateAlphaPlane(dec: *webp.VP8Decoder, io: *const webp.VP8Io) bool {
 }
 
 /// Deallocate memory associated to dec->alpha_plane_ decoding
-pub export fn WebPDeallocateAlphaMemory(dec: *webp.VP8Decoder) void {
+pub fn WebPDeallocateAlphaMemory(dec: *webp.VP8Decoder) void {
     webp.WebPSafeFree(dec.alpha_plane_mem_);
     dec.alpha_plane_mem_ = null;
     dec.alpha_plane_ = null;
@@ -166,7 +166,7 @@ pub export fn WebPDeallocateAlphaMemory(dec: *webp.VP8Decoder) void {
     dec.alph_dec_ = null;
 }
 
-pub export fn VP8DecompressAlphaRows(dec: *webp.VP8Decoder, io: *const webp.VP8Io, row: c_int, num_rows_arg: c_int) ?[*]const u8 {
+pub fn VP8DecompressAlphaRows(dec: *webp.VP8Decoder, io: *const webp.VP8Io, row: c_int, num_rows_arg: c_int) ?[*]const u8 {
     const width = io.width;
     const height = io.crop_bottom;
 

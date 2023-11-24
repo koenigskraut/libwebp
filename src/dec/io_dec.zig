@@ -611,7 +611,7 @@ fn CustomTeardown(io: *const webp.VP8Io) void {
 
 /// Initializes VP8Io with custom setup, io and teardown functions. The default
 /// hooks will use the supplied 'params' as io->opaque handle.
-pub export fn WebPInitCustomIo(params: ?*webp.DecParams, io: *webp.VP8Io) void {
+pub fn WebPInitCustomIo(params: ?*webp.DecParams, io: *webp.VP8Io) void {
     io.put = @ptrCast(&CustomPut);
     io.setup = @ptrCast(&CustomSetup);
     io.teardown = @ptrCast(&CustomTeardown);

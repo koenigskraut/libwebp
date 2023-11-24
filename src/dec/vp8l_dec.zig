@@ -577,7 +577,7 @@ fn ReadHuffmanCodes(dec: *VP8LDecoder, xsize: c_int, ysize: c_int, color_cache_b
     return @intFromBool(ok);
 }
 
-pub export fn ReadHuffmanCodesHelper(color_cache_bits: c_int, num_htree_groups: c_int, num_htree_groups_max: c_int, mapping: [*c]const c_int, dec: *VP8LDecoder, huffman_tables: *webp.HuffmanTables, htree_groups: [*c][*c]webp.HTreeGroup) c_int {
+pub fn ReadHuffmanCodesHelper(color_cache_bits: c_int, num_htree_groups: c_int, num_htree_groups_max: c_int, mapping: [*c]const c_int, dec: *VP8LDecoder, huffman_tables: *webp.HuffmanTables, htree_groups: [*c][*c]webp.HTreeGroup) c_int {
     var ok = false;
     const max_alphabet_size = kAlphabetSize[0] + (if (color_cache_bits > 0) @as(u16, 1) << @intCast(color_cache_bits) else 0);
     const table_size = kTableSize[@intCast(color_cache_bits)];
@@ -1529,7 +1529,7 @@ fn ClearMetadata(hdr: *VP8LMetadata) void {
 // -----------------------------------------------------------------------------
 // VP8LDecoder
 
-pub export fn VP8LNew() ?*VP8LDecoder {
+pub fn VP8LNew() ?*VP8LDecoder {
     const dec: *VP8LDecoder = @ptrCast(@alignCast(webp.WebPSafeCalloc(1, @sizeOf(VP8LDecoder)) orelse return null));
     dec.status_ = .Ok;
     dec.state_ = .READ_DIM;
@@ -1539,7 +1539,7 @@ pub export fn VP8LNew() ?*VP8LDecoder {
     return dec;
 }
 
-pub export fn VP8LClear(dec_arg: ?*VP8LDecoder) void {
+pub fn VP8LClear(dec_arg: ?*VP8LDecoder) void {
     const dec = dec_arg orelse return;
     ClearMetadata(&dec.hdr_);
 
@@ -1557,7 +1557,7 @@ pub export fn VP8LClear(dec_arg: ?*VP8LDecoder) void {
     dec.output_ = null; // leave no trace behind
 }
 
-pub export fn VP8LDelete(dec: ?*VP8LDecoder) void {
+pub fn VP8LDelete(dec: ?*VP8LDecoder) void {
     if (dec) |d| {
         VP8LClear(d);
         webp.WebPSafeFree(d);
@@ -1716,7 +1716,7 @@ fn ExtractAlphaRows(dec: *VP8LDecoder, last_row: c_int) callconv(.C) void {
     dec.last_row_, dec.last_out_row_ = .{ last_row, last_row };
 }
 
-pub export fn VP8LDecodeAlphaHeader(alph_dec: *webp.ALPHDecoder, data: [*c]const u8, data_size: usize) c_bool {
+pub fn VP8LDecodeAlphaHeader(alph_dec: *webp.ALPHDecoder, data: [*c]const u8, data_size: usize) c_bool {
     var dec = VP8LNew() orelse return 0;
 
     dec.width_ = alph_dec.width_;
@@ -1758,7 +1758,7 @@ pub export fn VP8LDecodeAlphaHeader(alph_dec: *webp.ALPHDecoder, data: [*c]const
     return 0;
 }
 
-pub export fn VP8LDecodeAlphaImageStream(alph_dec: *webp.ALPHDecoder, last_row: c_int) c_int {
+pub fn VP8LDecodeAlphaImageStream(alph_dec: *webp.ALPHDecoder, last_row: c_int) c_int {
     const dec: *VP8LDecoder = @ptrCast(alph_dec.vp8l_dec_.?);
     assert(last_row <= dec.height_);
 
@@ -1775,7 +1775,7 @@ pub export fn VP8LDecodeAlphaImageStream(alph_dec: *webp.ALPHDecoder, last_row: 
 
 //------------------------------------------------------------------------------
 
-pub export fn VP8LDecodeHeader(dec_arg: ?*VP8LDecoder, io_arg: ?*webp.VP8Io) c_int {
+pub fn VP8LDecodeHeader(dec_arg: ?*VP8LDecoder, io_arg: ?*webp.VP8Io) c_int {
     const dec = dec_arg orelse return 0;
     const io = io_arg orelse return VP8LSetError(dec, .InvalidParam);
 
@@ -1805,7 +1805,7 @@ pub export fn VP8LDecodeHeader(dec_arg: ?*VP8LDecoder, io_arg: ?*webp.VP8Io) c_i
     return 0;
 }
 
-pub export fn VP8LDecodeImage(dec_arg: ?*VP8LDecoder) c_int {
+pub fn VP8LDecodeImage(dec_arg: ?*VP8LDecoder) c_int {
     const dec = dec_arg orelse return 0;
 
     assert(dec.hdr_.huffman_tables_.root.start != null);

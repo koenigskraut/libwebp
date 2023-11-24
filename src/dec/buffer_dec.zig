@@ -139,7 +139,7 @@ fn AllocateBuffer(buffer: *webp.DecBuffer) VP8Error!void {
 }
 
 /// Flip buffer vertically by negating the various strides.
-pub export fn WebPFlipBuffer(buffer_arg: ?*webp.DecBuffer) VP8Status {
+pub fn WebPFlipBuffer(buffer_arg: ?*webp.DecBuffer) VP8Status {
     const buffer = buffer_arg orelse return .InvalidParam;
     if (buffer.colorspace.isRGBMode()) {
         const buf = &buffer.u.RGBA;
@@ -172,7 +172,7 @@ pub export fn WebPFlipBuffer(buffer_arg: ?*webp.DecBuffer) VP8Status {
 /// output buffer. This takes cropping / scaling / rotation into account.
 /// Also incorporates the options->flip flag to flip the buffer parameters if
 /// needed.
-pub export fn WebPAllocateDecBuffer(width_arg: c_int, height_arg: c_int, options_arg: ?*const webp.DecoderOptions, buffer_arg: ?*webp.DecBuffer) VP8Status {
+pub fn WebPAllocateDecBuffer(width_arg: c_int, height_arg: c_int, options_arg: ?*const webp.DecoderOptions, buffer_arg: ?*webp.DecBuffer) VP8Status {
     const buffer = buffer_arg orelse return .InvalidParam;
     var width, var height = .{ width_arg, height_arg };
     if (width <= 0 or height <= 0)
@@ -241,7 +241,7 @@ pub export fn WebPFreeDecBuffer(buffer: ?*webp.DecBuffer) void {
 
 /// Copy 'src' into 'dst' buffer, making sure 'dst' is not marked as owner of the
 /// memory (still held by 'src'). No pixels are copied.
-pub export fn WebPCopyDecBuffer(src_arg: ?*const webp.DecBuffer, dst_arg: ?*webp.DecBuffer) void {
+pub fn WebPCopyDecBuffer(src_arg: ?*const webp.DecBuffer, dst_arg: ?*webp.DecBuffer) void {
     const src = src_arg orelse return;
     const dst = dst_arg orelse return;
     dst.* = src.*;
@@ -264,7 +264,7 @@ pub fn WebPGrabDecBuffer(src_arg: ?*webp.DecBuffer, dst_arg: ?*webp.DecBuffer) v
 
 /// Copy pixels from 'src' into a *preallocated* 'dst' buffer. Returns
 /// VP8_STATUS_INVALID_PARAM if the 'dst' is not set up correctly for the copy.
-pub export fn WebPCopyDecBufferPixels(src_buf: *const webp.DecBuffer, dst_buf: *webp.DecBuffer) VP8Status {
+pub fn WebPCopyDecBufferPixels(src_buf: *const webp.DecBuffer, dst_buf: *webp.DecBuffer) VP8Status {
     assert(src_buf.colorspace == dst_buf.colorspace);
 
     dst_buf.width = src_buf.width;
@@ -289,7 +289,7 @@ pub export fn WebPCopyDecBufferPixels(src_buf: *const webp.DecBuffer, dst_buf: *
 
 /// Returns true if decoding will be slow with the current configuration
 /// and bitstream features.
-pub export fn WebPAvoidSlowMemory(output: *const webp.DecBuffer, features: ?*const webp.BitstreamFeatures) bool {
+pub fn WebPAvoidSlowMemory(output: *const webp.DecBuffer, features: ?*const webp.BitstreamFeatures) bool {
     return (output.is_external_memory >= 2) and
         output.colorspace.isPremultipliedMode() and
         (features != null and features.?.has_alpha != 0);

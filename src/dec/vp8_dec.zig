@@ -481,24 +481,8 @@ pub fn VP8InitIoInternal(io: ?*VP8Io, version: c_int) bool { // export
     return true;
 }
 
-fn VP8InitIoInternalC(io: ?*VP8Io, version: c_int) callconv(.C) c_bool {
-    return @intFromBool(VP8InitIoInternal(io, version));
-}
-comptime {
-    @export(VP8InitIoInternalC, .{ .name = "VP8InitIoInternal" });
-}
-
-// // Set the custom IO function pointers and user-data. The setter for IO hooks
-// // should be called before initiating incremental decoding. Returns true if
-// // WebPIDecoder object is successfully modified, false otherwise.
-// int WebPISetIOHooks(WebPIDecoder* const idec,
-//                     VP8IoPutHook put,
-//                     VP8IoSetupHook setup,
-//                     VP8IoTeardownHook teardown,
-//                     void* user_data);
-
 /// Create a new decoder object.
-pub export fn VP8New() ?*VP8Decoder {
+pub fn VP8New() ?*VP8Decoder {
     const dec_: ?*VP8Decoder = @ptrCast(@alignCast(webp.WebPSafeCalloc(1, @sizeOf(VP8Decoder))));
     if (dec_) |dec| {
         SetOk(dec);
@@ -521,7 +505,7 @@ pub inline fn VP8InitIo(io: ?*VP8Io) bool {
 // Miscellaneous VP8/VP8L bitstream probing functions.
 
 /// Returns true if the next 3 bytes in data contain the VP8 signature.
-fn VP8CheckSignature(data: []const u8) bool {
+pub fn VP8CheckSignature(data: []const u8) bool {
     return (data.len >= 3 and
         data[0] == 0x9d and data[1] == 0x01 and data[2] == 0x2a);
 }
@@ -684,7 +668,7 @@ fn ParseFilterHeader(br: *webp.VP8BitReader, dec: *VP8Decoder) bool {
 
 // Decode the VP8 frame header. Returns true if ok.
 // Note: 'io->data' must be pointing to the start of the VP8 frame header.
-pub export fn VP8GetHeaders(dec_arg: ?*VP8Decoder, io_arg: ?*VP8Io) c_bool {
+pub fn VP8GetHeaders(dec_arg: ?*VP8Decoder, io_arg: ?*VP8Io) c_bool {
     const dec = dec_arg orelse return 0;
     SetOk(dec);
     const io = io_arg orelse return VP8SetError(dec, .InvalidParam, "null VP8Io passed to VP8GetHeaders()");
@@ -1018,7 +1002,7 @@ fn ParseResiduals(dec: *VP8Decoder, mb: *VP8MB, token_br: *webp.VP8BitReader) c_
 // Main loop
 
 /// Decode one macroblock. Returns false if there is not enough data.
-pub export fn VP8DecodeMB(dec: *VP8Decoder, token_br: *webp.VP8BitReader) c_bool {
+pub fn VP8DecodeMB(dec: *VP8Decoder, token_br: *webp.VP8BitReader) c_bool {
     const left: *VP8MB = webp.offsetPtr(dec.mb_info_, -1).?;
     const mb: *VP8MB = webp.offsetPtr(dec.mb_info_, dec.mb_x_).?;
     const block: *VP8MBData = webp.offsetPtr(dec.mb_data_, dec.mb_x_).?;
@@ -1045,7 +1029,7 @@ pub export fn VP8DecodeMB(dec: *VP8Decoder, token_br: *webp.VP8BitReader) c_bool
     return @intFromBool(token_br.eof_ == 0);
 }
 
-pub export fn VP8InitScanline(dec: *VP8Decoder) void {
+pub fn VP8InitScanline(dec: *VP8Decoder) void {
     const left: *VP8MB = webp.offsetPtr(dec.mb_info_, -1).?;
     left.nz_ = 0;
     left.nz_dc_ = 0;
@@ -1081,7 +1065,7 @@ fn ParseFrame(dec: *VP8Decoder, io: *VP8Io) c_int {
 // Main entry point
 // Decode a picture. Will call VP8GetHeaders() if it wasn't done already.
 // Returns false in case of error.
-pub export fn VP8Decode(dec_arg: ?*VP8Decoder, io_arg: ?*VP8Io) c_int {
+pub fn VP8Decode(dec_arg: ?*VP8Decoder, io_arg: ?*VP8Io) c_int {
     var ok: c_int = 0;
     const dec = dec_arg orelse return 0;
     const io = io_arg orelse return VP8SetError(dec, .InvalidParam, "NULL VP8Io parameter in VP8Decode().");

@@ -51,7 +51,7 @@ const kAcTable = [128]u16{
 //------------------------------------------------------------------------------
 // Paragraph 9.6
 
-pub export fn VP8ParseQuant(dec: *webp.VP8Decoder) void {
+pub fn VP8ParseQuant(dec: *webp.VP8Decoder) void {
     const br = &dec.br_;
     const base_q0: c_int = @intCast(webp.VP8GetValue(br, 7, "global-header"));
     const dqy1_dc: c_int = if (webp.VP8Get(br, "global-header")) webp.VP8GetSignedValue(br, 4, "global-header") else 0;

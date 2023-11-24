@@ -57,7 +57,7 @@ pub const DecParams = extern struct {
 };
 
 /// Should be called first, before any use of the WebPDecParams object.
-pub export fn WebPResetDecParams(params: ?*DecParams) void {
+pub fn WebPResetDecParams(params: ?*DecParams) void {
     if (params) |p| p.* = std.mem.zeroes(DecParams);
 }
 
@@ -92,7 +92,7 @@ pub const HeaderStructure = extern struct {
 /// in the case of non-decodable features (animation for instance).
 /// In 'headers', compressed_size, offset, alpha_data, alpha_size, and lossless
 /// fields are updated appropriately upon success.
-pub export fn WebPParseHeaders(headers: *HeaderStructure) VP8Status {
+pub fn WebPParseHeaders(headers: *HeaderStructure) VP8Status {
     var has_animation: c_bool = 0;
     // fill out headers, ignore width/height/has_alpha.
     var status = ParseHeadersInternal(headers.data, headers.data_size, null, null, null, &has_animation, null, headers);
@@ -119,7 +119,7 @@ pub fn WebPCheckCropDimensions(image_width: c_int, image_height: c_int, x: c_int
 
 /// Setup crop_xxx fields, mb_w and mb_h in io. 'src_colorspace' refers
 /// to the *compressed* format, not the output one.
-pub export fn WebPIoInitFromOptions(options: ?*const webp.DecoderOptions, io: *webp.VP8Io, src_colorspace: webp.ColorspaceMode) c_bool {
+pub fn WebPIoInitFromOptions(options: ?*const webp.DecoderOptions, io: *webp.VP8Io, src_colorspace: webp.ColorspaceMode) c_bool {
     const W = io.width;
     const H = io.height;
     var x: c_int, var y: c_int, var w: c_int, var h: c_int = .{ 0, 0, W, H };

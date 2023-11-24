@@ -580,8 +580,7 @@ fn IDecode(idec: *IDecoder) VP8Status {
 //------------------------------------------------------------------------------
 // Internal constructor
 
-// static
-export fn NewDecoder(output_buffer: ?*webp.DecBuffer, features: ?*const webp.BitstreamFeatures) ?*IDecoder {
+fn NewDecoder(output_buffer: ?*webp.DecBuffer, features: ?*const webp.BitstreamFeatures) ?*IDecoder {
     const idec: *IDecoder = @ptrCast(@alignCast(webp.WebPSafeCalloc(1, @sizeOf(IDecoder)) orelse return null));
 
     idec.state_ = .WEBP_HEADER;
@@ -858,6 +857,9 @@ pub export fn WebPIDecGetYUVA(idec: ?*const IDecoder, last_y: ?*c_int, u: ?*[*c]
     return src.u.YUVA.y;
 }
 
+/// Set the custom IO function pointers and user-data. The setter for IO hooks
+/// should be called before initiating incremental decoding. Returns true if
+/// WebPIDecoder object is successfully modified, false otherwise.
 pub export fn WebPISetIOHooks(idec: ?*IDecoder, put: webp.VP8Io.PutHook, setup: webp.VP8Io.SetupHook, teardown: webp.VP8Io.TeardownHook, user_data: ?*anyopaque) c_bool {
     if (idec == null or @intFromEnum(idec.?.state_) > @intFromEnum(DecState.WEBP_HEADER)) {
         return 0;
