@@ -14,20 +14,12 @@ const webp = struct {
     pub usingnamespace @import("../utils/rescaler_utils.zig");
     pub usingnamespace @import("../utils/utils.zig");
 
-    extern fn VP8LHuffmanTablesAllocate(size: c_int, huffman_tables: [*c]@This().HuffmanTables) c_int;
-    extern fn VP8LHuffmanTablesDeallocate(huffman_tables: [*c]@This().HuffmanTables) void;
-    extern fn VP8LHtreeGroupsNew(num_htree_groups: c_int) [*c]@This().HTreeGroup;
-    extern fn VP8LHtreeGroupsFree(htree_groups: [*c]@This().HTreeGroup) void;
-    extern fn VP8LBuildHuffmanTable(root_table: [*c]@This().HuffmanTables, root_bits: c_int, code_lengths: [*c]const c_int, code_lengths_size: c_int) c_int;
-
     extern fn WebPRescalerInit(rescaler: [*c]@This().WebPRescaler, src_width: c_int, src_height: c_int, dst: [*c]u8, dst_width: c_int, dst_height: c_int, dst_stride: c_int, num_channels: c_int, work: [*c]@This().rescaler_t) c_int;
     extern fn VP8LInverseTransform(transform: [*c]const VP8LTransform, row_start: c_int, row_end: c_int, in: [*c]const u32, out: [*c]u32) void;
     extern fn VP8LDspInit() void;
     extern fn VP8LColorIndexInverseTransformAlpha(transform: [*c]const VP8LTransform, y_start: c_int, y_end: c_int, src: [*c]const u8, dst: [*c]u8) void;
 
-    // const WebPFilterFunc = ?*const fn ([*c]const u8, c_int, c_int, c_int, [*c]u8) callconv(.C) void;
     pub const WebPUnfilterFunc = ?*const fn ([*c]const u8, [*c]const u8, [*c]u8, c_int) callconv(.C) void;
-    // pub extern var WebPFilters: [4]WebPFilterFunc;
     pub extern var WebPUnfilters: [4]WebPUnfilterFunc;
 
     extern fn WebPInitAlphaProcessing() void;
@@ -413,7 +405,7 @@ fn ReadHuffmanCodeLengths(dec: *VP8LDecoder, code_length_code_lengths: [*c]const
         if (max_symbol == 0) break;
         max_symbol -= 1;
         webp.VP8LFillBitWindow(br);
-        var p: *const webp.HuffmanCode = &tables.curr_segment.?[0].start.?[webp.VP8LPrefetchBits(br) & webp.LENGTHS_TABLE_MASK];
+        var p: *const webp.HuffmanCode = &tables.curr_segment.?.start.?[webp.VP8LPrefetchBits(br) & webp.LENGTHS_TABLE_MASK];
         webp.VP8LSetBitPos(br, br.bit_pos_ + p.bits);
         var code_len: c_int = p.value;
         if (code_len < kCodeLengthLiterals) {
@@ -626,14 +618,14 @@ pub fn ReadHuffmanCodesHelper(color_cache_bits: c_int, num_htree_groups: c_int, 
                         alphabet_size += (@as(u32, 1) << @intCast(color_cache_bits));
                     }
                     const size = ReadHuffmanCode(@intCast(alphabet_size), dec, code_lengths, huffman_tables);
-                    htrees[j] = huffman_tables.curr_segment.?[0].curr_table;
+                    htrees[j] = huffman_tables.curr_segment.?.curr_table;
                     if (size == 0) break :GotoError;
 
                     if (is_trivial_literal and kLiteralMap[j] == 1) {
                         is_trivial_literal = (htrees[j].*.bits == 0);
                     }
                     total_size += htrees[j].*.bits;
-                    huffman_tables.curr_segment.?[0].curr_table = webp.offsetPtr(huffman_tables.curr_segment.?[0].curr_table.?, size);
+                    huffman_tables.curr_segment.?.curr_table = webp.offsetPtr(huffman_tables.curr_segment.?.curr_table.?, size);
                     if (j <= @intFromEnum(HuffIndex.ALPHA)) {
                         var local_max_bits = code_lengths[0];
                         for (1..alphabet_size) |k| {
