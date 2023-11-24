@@ -14,7 +14,6 @@ const webp = struct {
     pub usingnamespace @import("../utils/rescaler_utils.zig");
     pub usingnamespace @import("../utils/utils.zig");
 
-    extern fn WebPRescalerInit(rescaler: [*c]@This().WebPRescaler, src_width: c_int, src_height: c_int, dst: [*c]u8, dst_width: c_int, dst_height: c_int, dst_stride: c_int, num_channels: c_int, work: [*c]@This().rescaler_t) c_int;
     extern fn VP8LInverseTransform(transform: [*c]const VP8LTransform, row_start: c_int, row_end: c_int, in: [*c]const u32, out: [*c]u32) void;
     extern fn VP8LDspInit() void;
     extern fn VP8LColorIndexInverseTransformAlpha(transform: [*c]const VP8LTransform, y_start: c_int, y_end: c_int, src: [*c]const u8, dst: [*c]u8) void;
@@ -23,7 +22,6 @@ const webp = struct {
     pub extern var WebPUnfilters: [4]WebPUnfilterFunc;
 
     extern fn WebPInitAlphaProcessing() void;
-    extern fn WebPRescaleNeededLines(rescaler: [*c]const @This().WebPRescaler, max_num_lines: c_int) c_int;
     extern fn VP8LConvertFromBGRA(in_data: [*c]const u32, num_pixels: c_int, out_colorspace: @This().ColorspaceMode, rgba: [*c]u8) void;
 
     extern var WebPConvertARGBToY: ?*const fn ([*c]const u32, [*c]u8, c_int) callconv(.C) void;
@@ -32,7 +30,6 @@ const webp = struct {
     extern var WebPConvertRGB24ToY: ?*const fn ([*c]const u8, [*c]u8, c_int) callconv(.C) void;
     extern var WebPConvertBGR24ToY: ?*const fn ([*c]const u8, [*c]u8, c_int) callconv(.C) void;
     extern fn WebPInitConvertARGBToYUV() void;
-    extern fn WebPRescalerImport(rescaler: [*c]@This().WebPRescaler, num_rows: c_int, src: [*c]const u8, src_stride: c_int) c_int;
     extern fn WebPRescalerExportRow(wrk: [*c]@This().WebPRescaler) void;
 
     extern var WebPExtractAlpha: ?*const fn (noalias [*c]const u8, c_int, c_int, c_int, noalias [*c]u8, c_int) callconv(.C) c_int;
@@ -695,7 +692,7 @@ fn AllocateAndInitRescaler(dec: *VP8LDecoder, io: *webp.VP8Io) c_int {
     memory += work_size * @sizeOf(@TypeOf(work.*));
     scaled_data = @ptrCast(@alignCast(memory));
 
-    if (webp.WebPRescalerInit(@ptrCast(dec.rescaler), in_width, in_height, @ptrCast(scaled_data), out_width, out_height, 0, num_channels, @ptrCast(work)) == 0) {
+    if (webp.WebPRescalerInit(dec.rescaler.?, in_width, in_height, @ptrCast(scaled_data), out_width, out_height, 0, num_channels, @ptrCast(work)) == 0) {
         return 0;
     }
     return 1;
@@ -712,8 +709,8 @@ fn Export(rescaler: *webp.WebPRescaler, colorspace: CspMode, rgba_stride: c_int,
     var dst = rgba;
     const dst_width: c_int = rescaler.dst_width;
     var num_lines_out: c_int = 0;
-    while (webp.WebPRescalerHasPendingOutput(@ptrCast(rescaler))) {
-        webp.WebPRescalerExportRow(@ptrCast(rescaler));
+    while (rescaler.hasPendingOutput()) {
+        webp.WebPRescalerExportRow(rescaler);
         webp.WebPMultARGBRow.?(src, dst_width, 1);
         webp.VP8LConvertFromBGRA(src, dst_width, colorspace, dst);
         dst = webp.offsetPtr(dst, rgba_stride);
@@ -792,8 +789,8 @@ fn ExportYUVA(dec: *const VP8LDecoder, y_pos_arg: c_int) c_int {
     const dst_width = rescaler.dst_width;
     var num_lines_out: c_int = 0;
     var y_pos = y_pos_arg;
-    while (webp.WebPRescalerHasPendingOutput(@ptrCast(rescaler))) {
-        webp.WebPRescalerExportRow(@ptrCast(rescaler));
+    while (rescaler.hasPendingOutput()) {
+        webp.WebPRescalerExportRow(rescaler);
         webp.WebPMultARGBRow.?(src, dst_width, 1);
         ConvertToYUVA(src, dst_width, y_pos, dec.output_.?);
         y_pos += 1;
@@ -808,9 +805,9 @@ fn EmitRescaledRowsYUVA(dec: *const VP8LDecoder, in_arg: [*c]u8, in_stride: c_in
     var in = in_arg;
     while (num_lines_in < mb_h) {
         const lines_left: c_int = mb_h - num_lines_in;
-        const needed_lines = webp.WebPRescaleNeededLines(@ptrCast(dec.rescaler), lines_left);
+        const needed_lines = webp.WebPRescaleNeededLines(dec.rescaler.?, lines_left);
         webp.WebPMultARGBRows(in, in_stride, dec.rescaler.?.src_width, needed_lines, 0);
-        var lines_imported: c_int = webp.WebPRescalerImport(@ptrCast(dec.rescaler), lines_left, in, in_stride);
+        var lines_imported: c_int = webp.WebPRescalerImport(dec.rescaler.?, lines_left, in, in_stride);
         assert(lines_imported == needed_lines);
         num_lines_in += lines_imported;
         in = webp.offsetPtr(in, needed_lines * in_stride);

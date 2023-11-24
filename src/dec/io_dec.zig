@@ -22,14 +22,10 @@ const webp = struct {
     extern var WebPApplyAlphaMultiply: ?*const fn ([*c]u8, c_int, c_int, c_int, c_int) callconv(.C) void;
 
     extern fn WebPInitSamplers() void;
-    extern fn WebPRescalerImport(rescaler: [*c]@This().WebPRescaler, num_rows: c_int, src: [*c]const u8, src_stride: c_int) c_int;
-    extern fn WebPRescalerExport(rescaler: [*c]@This().WebPRescaler) c_int;
     extern fn WebPMultRows(noalias ptr: [*c]u8, stride: c_int, noalias alpha: [*c]const u8, alpha_stride: c_int, width: c_int, num_rows: c_int, inverse: c_int) void;
-    extern fn WebPRescalerInit(rescaler: [*c]@This().WebPRescaler, src_width: c_int, src_height: c_int, dst: [*c]u8, dst_width: c_int, dst_height: c_int, dst_stride: c_int, num_channels: c_int, work: [*c]@This().rescaler_t) c_int;
     extern fn WebPInitAlphaProcessing() void;
-    extern fn WebPRescalerExportRow(wrk: [*c]@This().WebPRescaler) void;
-    extern fn WebPRescaleNeededLines(rescaler: [*c]const @This().WebPRescaler, max_num_lines: c_int) c_int;
     extern fn WebPInitUpsamplers() void;
+    extern fn WebPRescalerExportRow(wrk: [*c]@This().WebPRescaler) void;
     extern fn WebPInitYUV444Converters() void;
 };
 
@@ -240,7 +236,7 @@ fn EmitAlphaRGBA4444(io: *const webp.VP8Io, p: *webp.DecParams, expected_num_lin
 //------------------------------------------------------------------------------
 // YUV rescaling (no final RGB conversion needed)
 
-fn Rescale(src_arg: [*]const u8, src_stride: c_int, new_lines_arg: c_int, wrk: ?*webp.WebPRescaler) c_int {
+fn Rescale(src_arg: [*]const u8, src_stride: c_int, new_lines_arg: c_int, wrk: *webp.WebPRescaler) c_int {
     var num_lines_out: c_int = 0;
     var src, var new_lines = .{ src_arg, new_lines_arg };
     while (new_lines > 0) { // import new contributions of source rows.
@@ -264,9 +260,9 @@ fn EmitRescaledYUV(io: *const webp.VP8Io, p: *webp.DecParams) c_int {
         // But we need to cast the const away, though.
         webp.WebPMultRows(@constCast(io.y), io.y_stride, io.a, io.width, io.mb_w, mb_h, 0);
     }
-    num_lines_out = Rescale(io.y, io.y_stride, mb_h, scaler);
-    _ = Rescale(io.u, io.uv_stride, uv_mb_h, p.scaler_u);
-    _ = Rescale(io.v, io.uv_stride, uv_mb_h, p.scaler_v);
+    num_lines_out = Rescale(io.y, io.y_stride, mb_h, scaler.?);
+    _ = Rescale(io.u, io.uv_stride, uv_mb_h, p.scaler_u.?);
+    _ = Rescale(io.v, io.uv_stride, uv_mb_h, p.scaler_v.?);
     return num_lines_out;
 }
 
@@ -275,7 +271,7 @@ fn EmitRescaledAlphaYUV(io: *const webp.VP8Io, p: *webp.DecParams, expected_num_
     const dst_a = webp.offsetPtr(buf.a, @as(i64, p.last_y) * buf.a_stride);
     if (io.a) |alpha| {
         const dst_y = webp.offsetPtr(buf.y, @as(i64, p.last_y) * buf.y_stride);
-        const num_lines_out = Rescale(alpha, io.width, io.mb_h, p.scaler_a);
+        const num_lines_out = Rescale(alpha, io.width, io.mb_h, p.scaler_a.?);
         assert(expected_num_lines_out == num_lines_out);
         if (num_lines_out > 0) { // unmultiply the Y
             webp.WebPMultRows(dst_y, buf.y_stride, dst_a, buf.a_stride, p.scaler_a.?.dst_width, num_lines_out, 1);
@@ -320,16 +316,16 @@ fn InitYUVRescaler(io: *const webp.VP8Io, p: *webp.DecParams) c_bool {
     p.scaler_v = &scalers[2];
     p.scaler_a = if (has_alpha) &scalers[3] else null;
 
-    if (webp.WebPRescalerInit(p.scaler_y, io.mb_w, io.mb_h, buf.y, out_width, out_height, buf.y_stride, 1, work) == 0 or
-        webp.WebPRescalerInit(p.scaler_u, uv_in_width, uv_in_height, buf.u, uv_out_width, uv_out_height, buf.u_stride, 1, work + work_size) == 0 or
-        webp.WebPRescalerInit(p.scaler_v, uv_in_width, uv_in_height, buf.v, uv_out_width, uv_out_height, buf.v_stride, 1, work + work_size + uv_work_size) == 0)
+    if (webp.WebPRescalerInit(p.scaler_y.?, io.mb_w, io.mb_h, buf.y, out_width, out_height, buf.y_stride, 1, work) == 0 or
+        webp.WebPRescalerInit(p.scaler_u.?, uv_in_width, uv_in_height, buf.u, uv_out_width, uv_out_height, buf.u_stride, 1, work + work_size) == 0 or
+        webp.WebPRescalerInit(p.scaler_v.?, uv_in_width, uv_in_height, buf.v, uv_out_width, uv_out_height, buf.v_stride, 1, work + work_size + uv_work_size) == 0)
     {
         return 0;
     }
     p.emit = @ptrCast(&EmitRescaledYUV);
 
     if (has_alpha) {
-        if (webp.WebPRescalerInit(p.scaler_a, io.mb_w, io.mb_h, buf.a, out_width, out_height, buf.a_stride, 1, work + work_size + 2 * uv_work_size) == 0) {
+        if (webp.WebPRescalerInit(p.scaler_a.?, io.mb_w, io.mb_h, buf.a, out_width, out_height, buf.a_stride, 1, work + work_size + 2 * uv_work_size) == 0) {
             return 0;
         }
         p.emit_alpha = @ptrCast(&EmitRescaledAlphaYUV);
@@ -348,8 +344,8 @@ fn ExportRGB(p: *webp.DecParams, y_pos: c_int) c_int {
     var num_lines_out: c_int = 0;
     // For RGB rescaling, because of the YUV420, current scan position
     // U/V can be +1/-1 line from the Y one.  Hence the double test.
-    while (webp.WebPRescalerHasPendingOutput(p.scaler_y.?) and
-        webp.WebPRescalerHasPendingOutput(p.scaler_u.?))
+    while (p.scaler_y.?.hasPendingOutput() and
+        p.scaler_u.?.hasPendingOutput())
     {
         assert(y_pos + num_lines_out < p.output.?.height);
         assert(p.scaler_u.?.y_accum == p.scaler_v.?.y_accum);
@@ -370,21 +366,21 @@ fn EmitRescaledRGB(io: *const webp.VP8Io, p: *webp.DecParams) c_int {
     var num_lines_out: c_int = 0;
     while (j < mb_h) {
         const y_lines_in = webp.WebPRescalerImport(
-            p.scaler_y,
+            p.scaler_y.?,
             mb_h - j,
             webp.offsetPtr(io.y, @as(i64, j) * io.y_stride),
             io.y_stride,
         );
         j += y_lines_in;
-        if (webp.WebPRescaleNeededLines(p.scaler_u, uv_mb_h - uv_j) != 0) {
+        if (webp.WebPRescaleNeededLines(p.scaler_u.?, uv_mb_h - uv_j) != 0) {
             const u_lines_in = webp.WebPRescalerImport(
-                p.scaler_u,
+                p.scaler_u.?,
                 uv_mb_h - uv_j,
                 webp.offsetPtr(io.u, @as(i64, uv_j) * io.uv_stride),
                 io.uv_stride,
             );
             const v_lines_in = webp.WebPRescalerImport(
-                p.scaler_v,
+                p.scaler_v.?,
                 uv_mb_h - uv_j,
                 webp.offsetPtr(io.v, @as(i64, uv_j) * io.uv_stride),
                 io.uv_stride,
@@ -408,7 +404,7 @@ fn ExportAlpha(p: *webp.DecParams, y_pos: c_int, max_lines_out: c_int) c_int {
     var non_opaque: u32 = 0;
     const width = p.scaler_a.?.dst_width;
 
-    while (webp.WebPRescalerHasPendingOutput(p.scaler_a.?) and
+    while (p.scaler_a.?.hasPendingOutput() and
         num_lines_out < max_lines_out)
     {
         assert(y_pos + num_lines_out < p.output.?.height);
@@ -433,7 +429,7 @@ fn ExportAlphaRGBA4444(p: *webp.DecParams, y_pos: c_int, max_lines_out: c_int) c
     const is_premult_alpha = colorspace.isPremultipliedMode();
     var alpha_mask: u32 = 0x0f;
 
-    while (webp.WebPRescalerHasPendingOutput(p.scaler_a.?) and
+    while (p.scaler_a.?.hasPendingOutput() and
         num_lines_out < max_lines_out)
     {
         assert(y_pos + num_lines_out < p.output.?.height);
@@ -499,9 +495,9 @@ fn InitRGBRescaler(io: *const webp.VP8Io, p: *webp.DecParams) c_bool {
     p.scaler_v = &scalers[2];
     p.scaler_a = if (has_alpha) &scalers[3] else null;
 
-    if (webp.WebPRescalerInit(p.scaler_y, io.mb_w, io.mb_h, webp.offsetPtr(tmp, 0 * out_width), out_width, out_height, 0, 1, webp.offsetPtr(work, 0 * work_size)) == 0 or
-        webp.WebPRescalerInit(p.scaler_u, uv_in_width, uv_in_height, webp.offsetPtr(tmp, 1 * out_width), out_width, out_height, 0, 1, webp.offsetPtr(work, 1 * work_size)) == 0 or
-        webp.WebPRescalerInit(p.scaler_v, uv_in_width, uv_in_height, webp.offsetPtr(tmp, 2 * out_width), out_width, out_height, 0, 1, webp.offsetPtr(work, 2 * work_size)) == 0)
+    if (webp.WebPRescalerInit(p.scaler_y.?, io.mb_w, io.mb_h, webp.offsetPtr(tmp, 0 * out_width), out_width, out_height, 0, 1, webp.offsetPtr(work, 0 * work_size)) == 0 or
+        webp.WebPRescalerInit(p.scaler_u.?, uv_in_width, uv_in_height, webp.offsetPtr(tmp, 1 * out_width), out_width, out_height, 0, 1, webp.offsetPtr(work, 1 * work_size)) == 0 or
+        webp.WebPRescalerInit(p.scaler_v.?, uv_in_width, uv_in_height, webp.offsetPtr(tmp, 2 * out_width), out_width, out_height, 0, 1, webp.offsetPtr(work, 2 * work_size)) == 0)
     {
         return 0;
     }
@@ -509,7 +505,7 @@ fn InitRGBRescaler(io: *const webp.VP8Io, p: *webp.DecParams) c_bool {
     webp.WebPInitYUV444Converters();
 
     if (has_alpha) {
-        if (webp.WebPRescalerInit(p.scaler_a, io.mb_w, io.mb_h, webp.offsetPtr(tmp, 3 * out_width), out_width, out_height, 0, 1, webp.offsetPtr(work, 3 * work_size)) == 0) {
+        if (webp.WebPRescalerInit(p.scaler_a.?, io.mb_w, io.mb_h, webp.offsetPtr(tmp, 3 * out_width), out_width, out_height, 0, 1, webp.offsetPtr(work, 3 * work_size)) == 0) {
             return 0;
         }
         p.emit_alpha = @ptrCast(&EmitRescaledAlphaRGB);

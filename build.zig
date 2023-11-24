@@ -280,7 +280,7 @@ const utils_dec_srsc: StrSlice = &.{
     // "src/utils/huffman_utils.c",
     "src/utils/quant_levels_dec_utils.c",
     // "src/utils/random_utils.c",
-    "src/utils/rescaler_utils.c",
+    // "src/utils/rescaler_utils.c",
     "src/utils/thread_utils.c",
     "src/utils/utils.c",
 };
