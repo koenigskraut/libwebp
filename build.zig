@@ -163,7 +163,7 @@ const dec_srcs: StrSlice = &.{
     // "src/dec/tree_dec.c",
     // "src/dec/vp8_dec.c",
     // "src/dec/vp8l_dec.c",
-    "src/dec/webp_dec.c",
+    // "src/dec/webp_dec.c",
 };
 
 const demux_srcs: StrSlice = &.{

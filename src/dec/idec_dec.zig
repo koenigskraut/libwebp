@@ -3,6 +3,7 @@ const webp = struct {
     usingnamespace @import("alpha_dec.zig");
     usingnamespace @import("buffer_dec.zig");
     usingnamespace @import("frame_dec.zig");
+    usingnamespace @import("io_dec.zig");
     usingnamespace @import("tree_dec.zig");
     usingnamespace @import("vp8_dec.zig");
     usingnamespace @import("vp8l_dec.zig");
@@ -12,16 +13,6 @@ const webp = struct {
     usingnamespace @import("../utils/utils.zig");
     usingnamespace @import("../webp/decode.zig");
     usingnamespace @import("../webp/format_constants.zig");
-
-    extern fn WebPGetWorkerInterface() *const @This().WorkerInterface;
-
-    extern fn WebPParseHeaders(headers: [*c]@This().HeaderStructure) VP8Status;
-    extern fn WebPResetDecParams(params: [*c]@This().DecParams) void;
-    extern fn WebPInitDecBufferInternal([*c]@This().DecBuffer, c_int) c_int;
-    inline fn WebPInitDecBuffer(buffer: [*c]@This().DecBuffer) c_int {
-        return WebPInitDecBufferInternal(buffer, @This().DECODER_ABI_VERSION);
-    }
-    extern fn WebPInitCustomIo(params: [*c]@This().DecParams, io: [*c]@This().VP8Io) void;
 };
 
 const c_bool = webp.c_bool;
@@ -479,7 +470,7 @@ fn DecodeRemaining(idec: *IDecoder) VP8Status {
                 }
                 // Synchronize the threads.
                 if (dec.mt_method_ > 0) {
-                    if (!(webp.WebPGetWorkerInterface().Sync.?(&dec.worker_) != 0)) {
+                    if (!(webp.WebPGetWorkerInterface().?.Sync.?(&dec.worker_) != 0)) {
                         return IDecError(idec, .BitstreamError);
                     }
                 }

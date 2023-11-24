@@ -1,5 +1,6 @@
 const webp = struct {
-    extern fn WebPGetFeaturesInternal([*c]const u8, usize, [*c]BitstreamFeatures, c_int) VP8Status;
+    usingnamespace @import("../dec/buffer_dec.zig");
+    usingnamespace @import("../dec/webp_dec.zig");
 };
 
 pub const DECODER_ABI_VERSION = 0x0209;
@@ -170,6 +171,10 @@ pub const DecBuffer = extern struct {
     /// not be used externally, but accessed via the buffer union.
     private_memory: [*c]u8,
 };
+
+pub inline fn WebPInitDecBuffer(buffer: ?*DecBuffer) c_int {
+    return webp.WebPInitDecBufferInternal(buffer, DECODER_ABI_VERSION);
+}
 
 /// Features gathered from the bitstream
 pub const BitstreamFeatures = extern struct {

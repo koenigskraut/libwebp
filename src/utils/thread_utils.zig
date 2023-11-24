@@ -51,3 +51,5 @@ pub const WorkerInterface = extern struct {
     /// must call Reset() again.
     End: ?*const fn ([*c]Worker) callconv(.C) void,
 };
+
+pub extern fn WebPGetWorkerInterface() ?*const WorkerInterface;

@@ -21,7 +21,6 @@ const webp = struct {
     extern var WebPDispatchAlpha: ?*const fn (noalias [*c]const u8, c_int, c_int, c_int, noalias [*c]u8, c_int) callconv(.C) c_int;
     extern var WebPApplyAlphaMultiply: ?*const fn ([*c]u8, c_int, c_int, c_int, c_int) callconv(.C) void;
 
-    extern fn WebPIoInitFromOptions(options: [*c]const @This().DecoderOptions, io: [*c]@This().VP8Io, src_colorspace: @This().ColorspaceMode) c_int;
     extern fn WebPInitSamplers() void;
     extern fn WebPRescalerImport(rescaler: [*c]@This().WebPRescaler, num_rows: c_int, src: [*c]const u8, src_stride: c_int) c_int;
     extern fn WebPRescalerExport(rescaler: [*c]@This().WebPRescaler) c_int;
@@ -610,6 +609,8 @@ fn CustomTeardown(io: *const webp.VP8Io) void {
 //------------------------------------------------------------------------------
 // Main entry point
 
+/// Initializes VP8Io with custom setup, io and teardown functions. The default
+/// hooks will use the supplied 'params' as io->opaque handle.
 pub export fn WebPInitCustomIo(params: ?*webp.DecParams, io: *webp.VP8Io) void {
     io.put = @ptrCast(&CustomPut);
     io.setup = @ptrCast(&CustomSetup);

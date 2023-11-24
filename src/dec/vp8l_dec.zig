@@ -29,7 +29,6 @@ const webp = struct {
     pub const WebPUnfilterFunc = ?*const fn ([*c]const u8, [*c]const u8, [*c]u8, c_int) callconv(.C) void;
     // pub extern var WebPFilters: [4]WebPFilterFunc;
     pub extern var WebPUnfilters: [4]WebPUnfilterFunc;
-    extern fn WebPIoInitFromOptions(options: [*c]const @This().DecoderOptions, io: [*c]@This().VP8Io, src_colorspace: @This().ColorspaceMode) c_int;
 
     extern fn WebPInitAlphaProcessing() void;
     extern fn WebPRescaleNeededLines(rescaler: [*c]const @This().WebPRescaler, max_num_lines: c_int) c_int;
@@ -229,10 +228,10 @@ fn VP8LSetError(dec: *VP8LDecoder, @"error": VP8Status) c_bool {
 
 //------------------------------------------------------------------------------
 
-pub const VP8L_MAGIC_BYTE: u8 = 0x2f;
-pub const VP8L_FRAME_HEADER_SIZE = 5;
-pub const VP8L_IMAGE_SIZE_BITS = 14;
-pub const VP8L_VERSION_BITS = 3;
+const VP8L_MAGIC_BYTE: u8 = webp.VP8L_MAGIC_BYTE;
+const VP8L_FRAME_HEADER_SIZE = webp.VP8L_FRAME_HEADER_SIZE;
+const VP8L_IMAGE_SIZE_BITS = webp.VP8L_IMAGE_SIZE_BITS;
+const VP8L_VERSION_BITS = webp.VP8L_VERSION_BITS;
 
 /// Returns true if the next byte(s) in data is a VP8L signature.
 pub fn VP8LCheckSignature(data: []const u8) bool {

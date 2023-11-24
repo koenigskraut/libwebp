@@ -1,6 +1,7 @@
 const std = @import("std");
 const webp = struct {
     usingnamespace @import("../webp/encode.zig");
+    usingnamespace @import("../webp/mux_types.zig");
 };
 
 const assert = std.debug.assert;
@@ -116,4 +117,16 @@ pub inline fn WEBP_ABI_IS_INCOMPATIBLE(a: anytype, b: anytype) @TypeOf((a >> @as
 
 pub fn CheckSizeOverflow(size: u64) bool {
     return size == @as(usize, @bitCast(size));
+}
+
+pub inline fn hasFlag(flags: u32, flag: webp.FeatureFlags) bool {
+    return flags & @intFromEnum(flag) == 1;
+}
+
+pub inline fn getLE32(data: []const u8) u32 {
+    return std.mem.readInt(u32, data[0..4], .little);
+}
+
+pub inline fn getLE24(data: []const u8) u24 {
+    return std.mem.readInt(u24, data[0..3], .little);
 }
