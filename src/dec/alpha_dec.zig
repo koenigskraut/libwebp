@@ -52,14 +52,13 @@ fn ALPHDelete(dec: ?*ALPHDecoder) void {
 //------------------------------------------------------------------------------
 // Decoding.
 
-// Initialize alpha decoding by parsing the alpha header and decoding the image
-// header for alpha data stored using lossless compression.
-// Returns false in case of error in alpha header (data too short, invalid
-// compression method or filter, error in lossless header data etc).
-fn ALPHInit(dec: *ALPHDecoder, data: [*]const u8, data_size: usize, src_io: *const webp.VP8Io, output: [*]u8) bool {
+/// Initialize alpha decoding by parsing the alpha header and decoding the image
+/// header for alpha data stored using lossless compression.
+/// Returns false in case of error in alpha header (data too short, invalid
+/// compression method or filter, error in lossless header data etc).
+fn ALPHInit(dec: *ALPHDecoder, data: []const u8, src_io: *const webp.VP8Io, output: [*]u8) bool {
     var ok = false;
-    const alpha_data = data + webp.ALPHA_HEADER_LEN;
-    const alpha_data_size = data_size - webp.ALPHA_HEADER_LEN;
+    const alpha_data = data[webp.ALPHA_HEADER_LEN..];
     var rsrv: c_uint = undefined;
     const io: *webp.VP8Io = &dec.io_;
 
@@ -69,7 +68,7 @@ fn ALPHInit(dec: *ALPHDecoder, data: [*]const u8, data_size: usize, src_io: *con
     dec.height_ = src_io.height;
     assert(dec.width_ > 0 and dec.height_ > 0);
 
-    if (data_size <= webp.ALPHA_HEADER_LEN) return false;
+    if (data.len <= webp.ALPHA_HEADER_LEN) return false;
 
     dec.method_ = (data[0] >> 0) & 0x03;
     dec.filter_ = @enumFromInt((data[0] >> 2) & 0x03);
@@ -100,19 +99,19 @@ fn ALPHInit(dec: *ALPHDecoder, data: [*]const u8, data_size: usize, src_io: *con
 
     if (dec.method_ == webp.ALPHA_NO_COMPRESSION) {
         const alpha_decoded_size = dec.width_ * dec.height_;
-        ok = (alpha_data_size >= alpha_decoded_size);
+        ok = (alpha_data.len >= alpha_decoded_size);
     } else {
         assert(dec.method_ == webp.ALPHA_LOSSLESS_COMPRESSION);
-        ok = webp.VP8LDecodeAlphaHeader(dec, alpha_data, alpha_data_size) != 0;
+        ok = webp.VP8LDecodeAlphaHeader(dec, alpha_data.ptr, alpha_data.len) != 0;
     }
 
     return ok;
 }
 
-// Decodes, unfilters and dequantizes *at least* 'num_rows' rows of alpha
-// starting from row number 'row'. It assumes that rows up to (row - 1) have
-// already been decoded.
-// Returns false in case of bitstream error.
+/// Decodes, unfilters and dequantizes *at least* 'num_rows' rows of alpha
+/// starting from row number 'row'. It assumes that rows up to (row - 1) have
+/// already been decoded.
+/// Returns false in case of bitstream error.
 fn ALPHDecode(dec: *webp.VP8Decoder, row: c_int, num_rows: c_int) bool {
     const alph_dec: *ALPHDecoder = dec.alph_dec_.?;
     const width = alph_dec.width_;
@@ -158,7 +157,7 @@ fn AllocateAlphaPlane(dec: *webp.VP8Decoder, io: *const webp.VP8Io) bool {
     return true;
 }
 
-// Deallocate memory associated to dec->alpha_plane_ decoding
+/// Deallocate memory associated to dec->alpha_plane_ decoding
 pub export fn WebPDeallocateAlphaMemory(dec: *webp.VP8Decoder) void {
     webp.WebPSafeFree(dec.alpha_plane_mem_);
     dec.alpha_plane_mem_ = null;
@@ -186,7 +185,7 @@ pub export fn VP8DecompressAlphaRows(dec: *webp.VP8Decoder, io: *const webp.VP8I
                 WebPDeallocateAlphaMemory(dec);
                 return null;
             }
-            if (!ALPHInit(dec.alph_dec_.?, dec.alpha_data_, dec.alpha_data_size_, io, dec.alpha_plane_)) {
+            if (!ALPHInit(dec.alph_dec_.?, dec.alpha_data_[0..dec.alpha_data_size_], io, dec.alpha_plane_)) {
                 const vp8l_dec = dec.alph_dec_.?.vp8l_dec_;
                 _ = webp.VP8SetError(dec, if (vp8l_dec) |ptr| ptr.status_ else .OutOfMemory, "Alpha decoder initialization failed.");
                 {
