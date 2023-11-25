@@ -13,9 +13,21 @@ const webp = struct {
 };
 
 const assert = std.debug.assert;
-const eql = std.mem.eql;
 const c_bool = webp.c_bool;
 const VP8Status = webp.VP8Status;
+
+const WebpTag = enum(u32) {
+    RIFF = @bitCast(@as([4]u8, "RIFF".*)),
+    WEBP = @bitCast(@as([4]u8, "WEBP".*)),
+    VP8X = @bitCast(@as([4]u8, "VP8X".*)),
+    VP8 = @bitCast(@as([4]u8, "VP8 ".*)),
+    VP8L = @bitCast(@as([4]u8, "VP8L".*)),
+    ALPH = @bitCast(@as([4]u8, "ALPH".*)),
+
+    pub inline fn is(data: [*c]const u8, tag: WebpTag) bool {
+        return @as(u32, @bitCast(data[0..webp.TAG_SIZE].*)) == @intFromEnum(tag);
+    }
+};
 
 //------------------------------------------------------------------------------
 // DecParams: Decoding output parameters. Transient internal object.
@@ -204,8 +216,8 @@ pub fn WebPIoInitFromOptions(options: ?*const webp.DecoderOptions, io: *webp.VP8
 /// *riff_size. Else return the RIFF size extracted from the header.
 fn ParseRIFF(data: *[*c]const u8, data_size: *usize, have_all_data: c_bool, riff_size: *usize) VP8Status {
     riff_size.* = 0; // Default: no RIFF present.
-    if (data_size.* >= webp.RIFF_HEADER_SIZE and eql(u8, data.*[0..webp.TAG_SIZE], "RIFF")) {
-        if (!eql(u8, data.*[8..][0..4], "WEBP")) {
+    if (data_size.* >= webp.RIFF_HEADER_SIZE and WebpTag.is(data.*, .RIFF)) {
+        if (!WebpTag.is(data.*[8..], .WEBP)) {
             return .BitstreamError; // Wrong image file signature.
         } else {
             const size: u32 = webp.getLE32(data.*[webp.TAG_SIZE..][0..4]);
@@ -242,7 +254,7 @@ fn ParseVP8X(data: *[*c]const u8, data_size: *usize, found_vp8x: *c_int, width_p
     // Insufficient data.
     if (data_size.* < webp.CHUNK_HEADER_SIZE) return .NotEnoughData;
 
-    if (eql(u8, data.*[0..webp.TAG_SIZE], "VP8X")) {
+    if (WebpTag.is(data.*, .VP8X)) {
         const chunk_size: u32 = webp.getLE32(data.*[webp.TAG_SIZE..][0..4]);
         if (chunk_size != webp.VP8X_CHUNK_SIZE) {
             return .BitstreamError; // Wrong chunk size.
@@ -312,7 +324,7 @@ fn ParseOptionalChunks(data: *[*c]const u8, data_size: *usize, riff_size: usize,
         // parsed all the optional chunks.
         // Note: This check must occur before the check 'buf_size < disk_chunk_size'
         // below to allow incomplete VP8/VP8L chunks.
-        if (eql(u8, buf[0..webp.TAG_SIZE], "VP8 ") or eql(u8, buf[0..webp.TAG_SIZE], "VP8L")) {
+        if (WebpTag.is(data.*, .VP8) or WebpTag.is(data.*, .VP8L)) {
             return .Ok;
         }
 
@@ -320,7 +332,7 @@ fn ParseOptionalChunks(data: *[*c]const u8, data_size: *usize, riff_size: usize,
             return .NotEnoughData;
         }
 
-        if (eql(u8, buf[0..webp.TAG_SIZE], "ALPH")) { // A valid ALPH header.
+        if (WebpTag.is(data.*, .ALPH)) { // A valid ALPH header.
             alpha_data.* = buf + webp.CHUNK_HEADER_SIZE;
             alpha_size.* = chunk_size;
         }
@@ -342,8 +354,8 @@ fn ParseOptionalChunks(data: *[*c]const u8, data_size: *usize, riff_size: usize,
 /// The flag '*is_lossless' is set to 1 in case of VP8L chunk / raw VP8L data.
 fn ParseVP8Header(data_ptr: *[*c]const u8, data_size: *usize, have_all_data: c_bool, riff_size: usize, chunk_size: *usize, is_lossless: *c_bool) VP8Status {
     const data = data_ptr.*;
-    const is_vp8 = eql(u8, data[0..webp.TAG_SIZE], "VP8 ");
-    const is_vp8l = eql(u8, data[0..webp.TAG_SIZE], "VP8L");
+    const is_vp8 = WebpTag.is(data, .VP8);
+    const is_vp8l = WebpTag.is(data, .VP8L);
     const minimal_size = webp.TAG_SIZE + webp.CHUNK_HEADER_SIZE; // "WEBP" + "VP8 nnnn" OR "WEBP" + "VP8Lnnnn"
 
     if (data_size.* < webp.CHUNK_HEADER_SIZE) {
@@ -440,7 +452,7 @@ fn ParseHeadersInternal(data_arg: [*c]const u8, data_size_arg: usize, width: ?*c
 
         // Skip over optional chunks if data started with "RIFF + VP8X" or "ALPH".
         if ((found_riff and (found_vp8x != 0)) or
-            (!found_riff and !(found_vp8x != 0) and eql(u8, data[0..webp.TAG_SIZE], "ALPH")))
+            (!found_riff and !(found_vp8x != 0) and WebpTag.is(data, .ALPH)))
         {
             status = ParseOptionalChunks(&data, &data_size, hdrs.riff_size, &hdrs.alpha_data, &hdrs.alpha_data_size);
             if (status != .Ok) break :ReturnWidthHeight; // Invalid chunk size / insufficient data.
