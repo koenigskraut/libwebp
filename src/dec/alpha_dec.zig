@@ -4,11 +4,10 @@ const webp = struct {
     usingnamespace @import("vp8_dec.zig");
     usingnamespace @import("vp8l_dec.zig");
     usingnamespace @import("../dsp/dsp.zig");
+    usingnamespace @import("../utils/quant_levels_dec_utils.zig");
     usingnamespace @import("../utils/utils.zig");
     usingnamespace @import("../webp/decode.zig");
     usingnamespace @import("../webp/format_constants.zig");
-
-    extern fn WebPDequantizeLevels(data: [*c]u8, width: c_int, height: c_int, stride: c_int, strength: c_int) c_int;
 };
 
 const assert = std.debug.assert;
