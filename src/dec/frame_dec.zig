@@ -500,7 +500,7 @@ pub fn VP8ProcessRow(dec: *webp.VP8Decoder, io: *webp.VP8Io) c_int {
     } else {
         const worker: *webp.Worker = &dec.worker_;
         // Finish previous job *before* updating context
-        ok &= webp.WebPGetWorkerInterface().?.Sync.?(worker);
+        ok &= webp.WebPGetWorkerInterface().Sync.?(worker);
         assert(worker.status_ == .ok);
         if (ok != 0) { // spawn a new deblocking/output job
             ctx.io_ = io.*;
@@ -521,7 +521,7 @@ pub fn VP8ProcessRow(dec: *webp.VP8Decoder, io: *webp.VP8Io) c_int {
                 dec.f_info_ = tmp;
             }
             // (reconstruct)+filter in parallel
-            webp.WebPGetWorkerInterface().?.Launch.?(worker);
+            webp.WebPGetWorkerInterface().Launch.?(worker);
             dec.cache_id_ += 1;
             if (dec.cache_id_ == dec.num_caches_) {
                 dec.cache_id_ = 0;
@@ -595,7 +595,7 @@ pub fn VP8EnterCritical(dec: *webp.VP8Decoder, io: *webp.VP8Io) VP8Status {
 pub fn VP8ExitCritical(dec: *webp.VP8Decoder, io: *webp.VP8Io) c_bool {
     var ok: c_int = 1;
     if (dec.mt_method_ > 0) {
-        ok = webp.WebPGetWorkerInterface().?.Sync.?(&dec.worker_);
+        ok = webp.WebPGetWorkerInterface().Sync.?(&dec.worker_);
     }
 
     if (io.teardown != null) {
@@ -636,7 +636,7 @@ fn InitThreadContext(dec: *webp.VP8Decoder) bool {
     dec.cache_id_ = 0;
     if (dec.mt_method_ > 0) {
         const worker: *webp.Worker = &dec.worker_;
-        if (webp.WebPGetWorkerInterface().?.Reset.?(worker) == 0) {
+        if (webp.WebPGetWorkerInterface().Reset.?(worker) == 0) {
             return webp.VP8SetError(dec, .OutOfMemory, "thread initialization failed.") != 0;
         }
         worker.data1 = dec;

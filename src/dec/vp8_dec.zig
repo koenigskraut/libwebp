@@ -342,7 +342,7 @@ export fn VP8StatusMessage(dec: ?*VP8Decoder) [*c]const u8 {
 // Not a mandatory call between calls to VP8Decode().
 pub export fn VP8Clear(dec_arg: ?*VP8Decoder) void {
     const dec = dec_arg orelse return;
-    webp.WebPGetWorkerInterface().?.End.?(&dec.worker_);
+    webp.WebPGetWorkerInterface().End.?(&dec.worker_);
     webp.WebPDeallocateAlphaMemory(dec);
     webp.WebPSafeFree(dec.mem_);
     dec.mem_ = null;
@@ -486,7 +486,7 @@ pub fn VP8New() ?*VP8Decoder {
     const dec_: ?*VP8Decoder = @ptrCast(@alignCast(webp.WebPSafeCalloc(1, @sizeOf(VP8Decoder))));
     if (dec_) |dec| {
         SetOk(dec);
-        webp.WebPGetWorkerInterface().?.Init.?(&dec.worker_);
+        webp.WebPGetWorkerInterface().Init.?(&dec.worker_);
         dec.ready_ = 0;
         dec.num_parts_minus_one_ = 0;
         InitGetCoeffs();
@@ -1056,7 +1056,7 @@ fn ParseFrame(dec: *VP8Decoder, io: *VP8Io) c_int {
             return VP8SetError(dec, .UserAbort, "Output aborted.");
     }
     if (dec.mt_method_ > 0) {
-        if (webp.WebPGetWorkerInterface().?.Sync.?(&dec.worker_) == 0) return 0;
+        if (webp.WebPGetWorkerInterface().Sync.?(&dec.worker_) == 0) return 0;
     }
 
     return 1;

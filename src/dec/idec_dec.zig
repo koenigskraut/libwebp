@@ -470,7 +470,7 @@ fn DecodeRemaining(idec: *IDecoder) VP8Status {
                 }
                 // Synchronize the threads.
                 if (dec.mt_method_ > 0) {
-                    if (!(webp.WebPGetWorkerInterface().?.Sync.?(&dec.worker_) != 0)) {
+                    if (!(webp.WebPGetWorkerInterface().Sync.?(&dec.worker_) != 0)) {
                         return IDecError(idec, .BitstreamError);
                     }
                 }
