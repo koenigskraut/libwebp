@@ -5,6 +5,46 @@ const build_options = @import("build_options");
 const webp = struct {
     usingnamespace @import("../utils/utils.zig");
 };
+const c_bool = webp.c_bool;
+
+//------------------------------------------------------------------------------
+// x86 defines.
+
+pub const use_sse2 = webp.have_x86_feat(builtin.cpu, .sse2);
+pub const have_sse2 = use_sse2;
+
+pub const use_sse41 = webp.have_x86_feat(builtin.cpu, .sse4_1);
+pub const have_sse41 = use_sse41;
+
+//------------------------------------------------------------------------------
+// Arm defines.
+
+pub const use_neon = webp.have_arm_feat(builtin.cpu, .neon) or webp.have_aarch64_feat(builtin.cpu, .neon);
+pub const android_neon = use_neon and builtin.target.isAndroid();
+
+pub const aarch64 = builtin.cpu.arch.isAARCH64();
+pub const have_neon = use_neon;
+
+//------------------------------------------------------------------------------
+// MIPS defines.
+
+pub const use_mips32 = builtin.cpu.arch.isMIPS() and
+    !webp.have_mips_feat(builtin.cpu, .mips64) and
+    !webp.have_mips_feat(builtin.cpu, .mips32r6);
+pub const use_mips32_r2 = use_mips32 and (webp.have_mips_feat(builtin.cpu, .mips32r2) or
+    webp.have_mips_feat(builtin.cpu, .mips32r3) or
+    webp.have_mips_feat(builtin.cpu, .mips32r5));
+pub const use_mips_dsp_r2 = use_mips32_r2 and webp.have_mips_feat(builtin.cpu, .dspr2);
+
+pub const use_msa = webp.have_mips_feat(builtin.cpu, .msa) and (webp.have_mips_feat(builtin.cpu, .mips32r5) or
+    webp.have_mips_feat(builtin.cpu, .mips32r6) or
+    webp.have_mips_feat(builtin.cpu, .mips64r5) or
+    webp.have_mips_feat(builtin.cpu, .mips64r6));
+
+//------------------------------------------------------------------------------
+
+pub const dsp_omit_c_code = build_options.dsp_omit_c_code;
+pub const neon_omit_c_code = use_neon and dsp_omit_c_code;
 
 //------------------------------------------------------------------------------
 
@@ -24,6 +64,17 @@ const webp = struct {
 // #endif
 
 // pub extern var VP8GetCPUInfo: VP8CPUInfo;
+
+pub fn WEBP_DSP_INIT_FUNC(comptime func: fn () void) fn () void {
+    return struct {
+        pub fn _() void {
+            const S = struct {
+                pub var once = std.once(func);
+            };
+            S.once.call();
+        }
+    }._;
+}
 
 // pub fn WEBP_DSP_INIT_FUNC(comptime func: fn () void) fn () void {
 //     return struct {
@@ -98,5 +149,5 @@ pub const CPUFeature = enum(c_uint) {
 };
 
 // returns true if the CPU supports the feature.
-pub const VP8CPUInfo = ?*const fn (CPUFeature) callconv(.C) c_int;
+pub const VP8CPUInfo = ?*const fn (CPUFeature) callconv(.C) c_bool;
 pub const VP8CPUInfoBody = fn (CPUFeature) callconv(.C) c_int;
