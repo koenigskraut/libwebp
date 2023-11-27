@@ -5,6 +5,7 @@ const webp = struct {
     pub usingnamespace @import("alpha_dec.zig");
     pub usingnamespace @import("vp8_dec.zig");
     pub usingnamespace @import("webp_dec.zig");
+    pub usingnamespace @import("../dsp/alpha_processing.zig");
     pub usingnamespace @import("../dsp/lossless_common.zig");
     pub usingnamespace @import("../webp/decode.zig");
     pub usingnamespace @import("../webp/format_constants.zig");
@@ -21,7 +22,6 @@ const webp = struct {
     pub const WebPUnfilterFunc = ?*const fn ([*c]const u8, [*c]const u8, [*c]u8, c_int) callconv(.C) void;
     pub extern var WebPUnfilters: [4]WebPUnfilterFunc;
 
-    extern fn WebPInitAlphaProcessing() void;
     extern fn VP8LConvertFromBGRA(in_data: [*c]const u32, num_pixels: c_int, out_colorspace: @This().ColorspaceMode, rgba: [*c]u8) void;
 
     extern var WebPConvertARGBToY: ?*const fn ([*c]const u32, [*c]u8, c_int) callconv(.C) void;
@@ -31,15 +31,6 @@ const webp = struct {
     extern var WebPConvertBGR24ToY: ?*const fn ([*c]const u8, [*c]u8, c_int) callconv(.C) void;
     extern fn WebPInitConvertARGBToYUV() void;
     extern fn WebPRescalerExportRow(wrk: [*c]@This().WebPRescaler) void;
-
-    extern var WebPExtractAlpha: ?*const fn (noalias [*c]const u8, c_int, c_int, c_int, noalias [*c]u8, c_int) callconv(.C) c_int;
-    extern var WebPExtractGreen: ?*const fn (noalias [*c]const u32, noalias [*c]u8, c_int) callconv(.C) void;
-    extern var WebPMultARGBRow: ?*const fn ([*c]u32, c_int, c_int) callconv(.C) void;
-    extern fn WebPMultARGBRows(ptr: [*c]u8, stride: c_int, width: c_int, num_rows: c_int, inverse: c_int) void;
-    extern var WebPMultRow: ?*const fn (noalias [*c]u8, noalias [*c]const u8, c_int, c_int) callconv(.C) void;
-    extern fn WebPMultRows(noalias ptr: [*c]u8, stride: c_int, noalias alpha: [*c]const u8, alpha_stride: c_int, width: c_int, num_rows: c_int, inverse: c_int) void;
-    extern fn WebPMultRow_C(noalias ptr: [*c]u8, noalias alpha: [*c]const u8, width: c_int, inverse: c_int) void;
-    extern fn WebPMultARGBRow_C(ptr: [*c]u32, width: c_int, inverse: c_int) void;
 };
 
 const assert = std.debug.assert;

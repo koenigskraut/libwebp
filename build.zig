@@ -6,11 +6,15 @@ pub fn build(b: *std.Build) !void {
     const reduce_size = b.option(bool, "reduce-size", "") orelse false;
     const no_fancy_upsampling = b.option(bool, "no-fancy-upsampling", "") orelse false;
     const swap_16bit_csp = b.option(bool, "swap-16bit-csp", "") orelse false;
+    const use_tables_for_alpha_mult = b.option(bool, "use-tables-for-alpha-mult", "") orelse false;
+    const dsp_omit_c_code = b.option(bool, "dsp-omit-c-code", "") orelse true;
 
     const options = b.addOptions();
     options.addOption(bool, "reduce_size", reduce_size);
     options.addOption(bool, "fancy_upsampling", !no_fancy_upsampling);
     options.addOption(bool, "swap_16bit_csp", swap_16bit_csp);
+    options.addOption(bool, "use_tables_for_alpha_mult", use_tables_for_alpha_mult);
+    options.addOption(bool, "dsp_omit_c_code", dsp_omit_c_code);
 
     const lib = b.addStaticLibrary(.{
         .name = "webp",
@@ -132,6 +136,22 @@ pub fn build(b: *std.Build) !void {
 
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&tests_cmd.step);
+
+    const single = b.addExecutable(.{
+        .name = "single",
+        .root_source_file = .{ .path = "src/single.zig" },
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    // single.linkLibrary(lib);
+    // single.linkSystemLibrary("webp");
+    single.addIncludePath(.{ .path = "." });
+    single.addOptions("build_options", options);
+    b.installArtifact(single);
+    const run_single = b.addRunArtifact(single);
+    run_single.step.dependOn(b.getInstallStep());
+    b.step("run", "Run single").dependOn(&run_single.step);
 }
 
 const StrSlice = []const []const u8;
@@ -172,7 +192,7 @@ const demux_srcs: StrSlice = &.{
 };
 
 const dsp_dec_srsc: StrSlice = &.{
-    "src/dsp/alpha_processing.c",
+    // "src/dsp/alpha_processing.c",
     "src/dsp/alpha_processing_mips_dsp_r2.c",
     "src/dsp/alpha_processing_neon.c",
     "src/dsp/alpha_processing_sse2.c",

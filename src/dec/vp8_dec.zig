@@ -887,20 +887,15 @@ extern var VP8GetCPUInfo: webp.VP8CPUInfo;
 const GetCoeffsFunc = ?*const fn (br: [*c]webp.VP8BitReader, prob: [*c]const [*c]const VP8BandProbas, ctx: c_int, dq: *const quant_t, n: c_int, out: [*c]i16) callconv(.C) c_int;
 var GetCoeffs: GetCoeffsFunc = null;
 
-fn InitGetCoeffs() void {
-    const S = struct {
-        fn InitGetCoeffsBody() void {
-            if (VP8GetCPUInfo != null and VP8GetCPUInfo.?(.kSlowSSSE3) != 0) {
-                GetCoeffs = @ptrCast(&GetCoeffsAlt);
-            } else {
-                GetCoeffs = @ptrCast(&GetCoeffsFast);
-            }
+const InitGetCoeffs: fn () void = webp.WEBP_DSP_INIT_FUNC(struct {
+    pub fn _() void {
+        if (VP8GetCPUInfo != null and VP8GetCPUInfo.?(.kSlowSSSE3) != 0) {
+            GetCoeffs = @ptrCast(&GetCoeffsAlt);
+        } else {
+            GetCoeffs = @ptrCast(&GetCoeffsFast);
         }
-        var once = std.once(InitGetCoeffsBody);
-    };
-
-    S.once.call();
-}
+    }
+}._);
 
 inline fn NzCodeBits(nz_coeffs_arg: u32, nz: c_int, dc_nz: bool) u32 {
     var nz_coeffs = nz_coeffs_arg << 2;

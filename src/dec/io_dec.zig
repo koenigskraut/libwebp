@@ -3,6 +3,7 @@ const build_options = @import("build_options");
 const webp = struct {
     usingnamespace @import("vp8_dec.zig");
     usingnamespace @import("webp_dec.zig");
+    usingnamespace @import("../dsp/alpha_processing.zig");
     usingnamespace @import("../utils/rescaler_utils.zig");
     usingnamespace @import("../utils/utils.zig");
     usingnamespace @import("../webp/decode.zig");
@@ -17,13 +18,7 @@ const webp = struct {
     const WebPYUV444Converter = ?*const fn ([*c]const u8, [*c]const u8, [*c]const u8, [*c]u8, c_int) callconv(.C) void;
     const WebPYUV444Converters: [*c]WebPYUV444Converter = @extern([*c]WebPYUV444Converter, .{ .name = "WebPYUV444Converters" });
 
-    extern var WebPApplyAlphaMultiply4444: ?*const fn ([*c]u8, c_int, c_int, c_int) callconv(.C) void;
-    extern var WebPDispatchAlpha: ?*const fn (noalias [*c]const u8, c_int, c_int, c_int, noalias [*c]u8, c_int) callconv(.C) c_int;
-    extern var WebPApplyAlphaMultiply: ?*const fn ([*c]u8, c_int, c_int, c_int, c_int) callconv(.C) void;
-
     extern fn WebPInitSamplers() void;
-    extern fn WebPMultRows(noalias ptr: [*c]u8, stride: c_int, noalias alpha: [*c]const u8, alpha_stride: c_int, width: c_int, num_rows: c_int, inverse: c_int) void;
-    extern fn WebPInitAlphaProcessing() void;
     extern fn WebPInitUpsamplers() void;
     extern fn WebPRescalerExportRow(wrk: [*c]@This().WebPRescaler) void;
     extern fn WebPInitYUV444Converters() void;
