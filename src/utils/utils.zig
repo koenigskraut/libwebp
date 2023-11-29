@@ -25,11 +25,11 @@ pub inline fn WebPMemToInt32(ptr: [*c]const u8) i32 {
 }
 
 pub inline fn WebPUint32ToMem(ptr: [*c]u8, val: u32) void {
-    @memcpy(ptr[0..4], @as(*[4]u8, @ptrCast(&val)));
+    ptr[0..4].* = @bitCast(val);
 }
 
 pub inline fn WebPInt32ToMem(ptr: [*c]u8, val: i32) void {
-    @memcpy(ptr[0..4], @as(*[4]u8, @ptrCast(&val)));
+    ptr[0..4].* = @bitCast(val);
 }
 
 //------------------------------------------------------------------------------
