@@ -843,7 +843,7 @@ fn DitherCombine8x8_C(dither_: [*c]const u8, dst_: [*c]u8, dst_stride: c_int) ca
 
 extern var VP8GetCPUInfo: webp.VP8CPUInfo;
 extern fn VP8DspInitSSE2() void;
-extern fn VP8DspInitSSE41() void;
+const VP8DspInitSSE41 = @import("dec_sse41.zig").VP8DspInitSSE41;
 extern fn VP8DspInitNEON() void;
 extern fn VP8DspInitMIPS32() void;
 extern fn VP8DspInitMIPSdspR2() void;
@@ -918,9 +918,9 @@ pub const VP8DspInit = webp.WEBP_DSP_INIT_FUNC(struct {
         if (VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
                 if (getCpuInfo(.kSSE2) != 0) {
-                    // VP8DspInitSSE2();
+                    VP8DspInitSSE2();
                     if (comptime webp.have_sse41) {
-                        // if (getCpuInfo(.kSSE4_1) != 0) VP8DspInitSSE41();
+                        if (getCpuInfo(.kSSE4_1) != 0) VP8DspInitSSE41();
                     }
                 }
             }

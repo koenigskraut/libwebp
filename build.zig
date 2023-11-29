@@ -207,7 +207,7 @@ const dsp_dec_srsc: StrSlice = &.{
     "src/dsp/dec_msa.c",
     "src/dsp/dec_neon.c",
     "src/dsp/dec_sse2.c",
-    "src/dsp/dec_sse41.c",
+    // "src/dsp/dec_sse41.c",
     "src/dsp/filters.c",
     "src/dsp/filters_mips_dsp_r2.c",
     "src/dsp/filters_msa.c",
