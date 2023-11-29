@@ -400,7 +400,7 @@ comptime {
 extern var VP8GetCPUInfo: webp.VP8CPUInfo;
 extern fn WebPInitAlphaProcessingMIPSdspR2() void;
 extern fn WebPInitAlphaProcessingSSE2() void;
-extern fn WebPInitAlphaProcessingSSE41() void;
+const WebPInitAlphaProcessingSSE41 = @import("alpha_processing_sse41.zig").WebPInitAlphaProcessingSSE41;
 extern fn WebPInitAlphaProcessingNEON() void;
 
 pub const WebPInitAlphaProcessing: fn () void = webp.WEBP_DSP_INIT_FUNC(struct {

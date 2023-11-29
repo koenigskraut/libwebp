@@ -198,7 +198,7 @@ const dsp_dec_srsc: StrSlice = &.{
     "src/dsp/alpha_processing_mips_dsp_r2.c",
     "src/dsp/alpha_processing_neon.c",
     "src/dsp/alpha_processing_sse2.c",
-    "src/dsp/alpha_processing_sse41.c",
+    // "src/dsp/alpha_processing_sse41.c",
     "src/dsp/cpu.c",
     // "src/dsp/dec.c",
     // "src/dsp/dec_clip_tables.c",
