@@ -8,6 +8,7 @@ pub fn build(b: *std.Build) !void {
     const swap_16bit_csp = b.option(bool, "swap-16bit-csp", "") orelse false;
     const use_tables_for_alpha_mult = b.option(bool, "use-tables-for-alpha-mult", "") orelse false;
     const dsp_omit_c_code = b.option(bool, "dsp-omit-c-code", "") orelse true;
+    const use_static_tables = b.option(bool, "use-static-tables", "") orelse true;
 
     const options = b.addOptions();
     options.addOption(bool, "reduce_size", reduce_size);
@@ -15,6 +16,7 @@ pub fn build(b: *std.Build) !void {
     options.addOption(bool, "swap_16bit_csp", swap_16bit_csp);
     options.addOption(bool, "use_tables_for_alpha_mult", use_tables_for_alpha_mult);
     options.addOption(bool, "dsp_omit_c_code", dsp_omit_c_code);
+    options.addOption(bool, "use_static_tables", use_static_tables);
 
     const lib = b.addStaticLibrary(.{
         .name = "webp",
@@ -198,8 +200,8 @@ const dsp_dec_srsc: StrSlice = &.{
     "src/dsp/alpha_processing_sse2.c",
     "src/dsp/alpha_processing_sse41.c",
     "src/dsp/cpu.c",
-    "src/dsp/dec.c",
-    "src/dsp/dec_clip_tables.c",
+    // "src/dsp/dec.c",
+    // "src/dsp/dec_clip_tables.c",
     "src/dsp/dec_mips32.c",
     "src/dsp/dec_mips_dsp_r2.c",
     "src/dsp/dec_msa.c",

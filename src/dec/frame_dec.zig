@@ -10,8 +10,6 @@ const webp = struct {
     usingnamespace @import("../utils/thread_utils.zig");
     usingnamespace @import("../utils/utils.zig");
     usingnamespace @import("../webp/decode.zig");
-
-    extern fn VP8DspInit() void;
 };
 
 const assert = std.debug.assert;
