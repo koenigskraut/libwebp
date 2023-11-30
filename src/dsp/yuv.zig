@@ -101,35 +101,35 @@ pub inline fn VP8YuvToRgba(y: u8, u: u8, v: u8, rgba: [*c]u8) void {
 //-----------------------------------------------------------------------------
 // Plain-C version
 
-const RowFunc = fn (y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, dst: [*c]u8, len: c_int) callconv(.C) void;
-fn ROW_FUNC(comptime FUNC: anytype, comptime XSTEP: comptime_int) RowFunc {
+const RowFuncHandler = fn (y: u8, u: u8, v: u8, rgb: [*c]u8) callconv(.Inline) void;
+fn RowFunc(comptime func: RowFuncHandler, comptime xstep: comptime_int) WebPSamplerRowFuncBody {
     return struct {
         fn _(y_: [*c]const u8, u_: [*c]const u8, v_: [*c]const u8, dst_: [*c]u8, len: c_int) callconv(.C) void {
             var y, var u, var v, var dst = .{ y_, u_, v_, dst_ };
-            const end = webp.offsetPtr(dst, (len & ~@as(c_int, 1)) * XSTEP);
+            const end = webp.offsetPtr(dst, (len & ~@as(c_int, 1)) * xstep);
             while (dst != end) {
-                FUNC(y[0], u[0], v[0], dst);
-                FUNC(y[1], u[0], v[0], dst + (XSTEP));
+                func(y[0], u[0], v[0], dst);
+                func(y[1], u[0], v[0], dst + (xstep));
                 y += 2;
                 u += 1;
                 v += 1;
-                dst += 2 * (XSTEP);
+                dst += 2 * (xstep);
             }
             if (len & 1 != 0) {
-                FUNC(y[0], u[0], v[0], dst);
+                func(y[0], u[0], v[0], dst);
             }
         }
     }._;
 }
 
 // All variants implemented.
-const YuvToRgbRow = ROW_FUNC(VP8YuvToRgb, 3);
-const YuvToBgrRow = ROW_FUNC(VP8YuvToBgr, 3);
-const YuvToRgbaRow = ROW_FUNC(VP8YuvToRgba, 4);
-const YuvToBgraRow = ROW_FUNC(VP8YuvToBgra, 4);
-const YuvToArgbRow = ROW_FUNC(VP8YuvToArgb, 4);
-const YuvToRgba4444Row = ROW_FUNC(VP8YuvToRgba4444, 2);
-const YuvToRgb565Row = ROW_FUNC(VP8YuvToRgb565, 2);
+const YuvToRgbRow = RowFunc(VP8YuvToRgb, 3);
+const YuvToBgrRow = RowFunc(VP8YuvToBgr, 3);
+const YuvToRgbaRow = RowFunc(VP8YuvToRgba, 4);
+const YuvToBgraRow = RowFunc(VP8YuvToBgra, 4);
+const YuvToArgbRow = RowFunc(VP8YuvToArgb, 4);
+const YuvToRgba4444Row = RowFunc(VP8YuvToRgba4444, 2);
+const YuvToRgb565Row = RowFunc(VP8YuvToRgb565, 2);
 comptime {
     @export(YuvToRgbRow, .{ .name = "YuvToRgbRow" });
     @export(YuvToBgrRow, .{ .name = "YuvToBgrRow" });
@@ -168,8 +168,9 @@ pub export fn WebPSamplerProcessPlane(
 //-----------------------------------------------------------------------------
 // Main call
 
+const WebPSamplerRowFuncBody = fn (y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, dst: [*c]u8, len: c_int) callconv(.C) void;
 /// Per-row point-sampling methods.
-pub const WebPSamplerRowFunc = ?*const fn (y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, dst: [*c]u8, len: c_int) callconv(.C) void;
+pub const WebPSamplerRowFunc = ?*const WebPSamplerRowFuncBody;
 
 /// Sampling functions to convert rows of YUV to RGB(A)
 pub var WebPSamplers = [_]WebPSamplerRowFunc{null} ** @intFromEnum(webp.ColorspaceMode.LAST);

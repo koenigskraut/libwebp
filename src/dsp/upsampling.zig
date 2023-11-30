@@ -33,29 +33,30 @@ comptime {
 //  ([3*a +   b + 9*c + 3*d      a + 3*b + 3*c + 9*d]   [8 8]) / 16
 
 /// We process u and v together stashed into 32bit (16bit each).
-inline fn LOAD_UV(u: u8, v: u8) u32 {
+inline fn loadUV(u: u8, v: u8) u32 {
     return @as(u32, u) | (@as(u32, v) << 16);
 }
 
-fn UPSAMPLE_FUNC(comptime FUNC: fn (y: u8, u: u8, v: u8, rgba: [*c]u8) callconv(.Inline) void, comptime XSTEP: comptime_int) WebPUpsampleLinePairFuncBody {
+const UpsampleFuncHandler = fn (y: u8, u: u8, v: u8, rgba: [*c]u8) callconv(.Inline) void;
+fn UpsampleFunc(comptime func: UpsampleFuncHandler, comptime xstep: comptime_int) WebPUpsampleLinePairFuncBody {
     return struct {
         fn _(top_y: [*c]const u8, bottom_y: [*c]const u8, top_u: [*c]const u8, top_v: [*c]const u8, cur_u: [*c]const u8, cur_v: [*c]const u8, top_dst: [*c]u8, bottom_dst: [*c]u8, len: c_int) callconv(.C) void {
             // int x;
             const last_pixel_pair = (len - 1) >> 1;
-            var tl_uv = LOAD_UV(top_u[0], top_v[0]); // top-left sample
-            var l_uv = LOAD_UV(cur_u[0], cur_v[0]); // left-sample
+            var tl_uv = loadUV(top_u[0], top_v[0]); // top-left sample
+            var l_uv = loadUV(cur_u[0], cur_v[0]); // left-sample
             assert(top_y != null);
             {
                 const uv0: u32 = (3 *% tl_uv +% l_uv +% 0x00020002) >> 2;
-                FUNC(top_y[0], @truncate(uv0 & 0xff), @truncate(uv0 >> 16), top_dst);
+                func(top_y[0], @truncate(uv0 & 0xff), @truncate(uv0 >> 16), top_dst);
             }
             if (bottom_y != null) {
                 const uv0: u32 = (3 *% l_uv +% tl_uv +% 0x00020002) >> 2;
-                FUNC(bottom_y[0], @truncate(uv0 & 0xff), @truncate(uv0 >> 16), bottom_dst);
+                func(bottom_y[0], @truncate(uv0 & 0xff), @truncate(uv0 >> 16), bottom_dst);
             }
             for (1..@intCast(last_pixel_pair + 1)) |x| {
-                const t_uv = LOAD_UV(top_u[x], top_v[x]); //top sample
-                const uv = LOAD_UV(cur_u[x], cur_v[x]); //sample
+                const t_uv = loadUV(top_u[x], top_v[x]); //top sample
+                const uv = loadUV(cur_u[x], cur_v[x]); //sample
                 // precompute invariant values associated with first and second diagonals
                 const avg = tl_uv +% t_uv +% l_uv +% uv +% 0x00080008;
                 const diag_12 = (avg +% 2 *% (t_uv +% l_uv)) >> 3;
@@ -63,14 +64,14 @@ fn UPSAMPLE_FUNC(comptime FUNC: fn (y: u8, u: u8, v: u8, rgba: [*c]u8) callconv(
                 {
                     const uv0 = (diag_12 +% tl_uv) >> 1;
                     const uv1 = (diag_03 +% t_uv) >> 1;
-                    FUNC(top_y[2 * x - 1], @truncate(uv0 & 0xff), @truncate(uv0 >> 16), top_dst + (2 * x - 1) * XSTEP);
-                    FUNC(top_y[2 * x - 0], @truncate(uv1 & 0xff), @truncate(uv1 >> 16), top_dst + (2 * x - 0) * XSTEP);
+                    func(top_y[2 * x - 1], @truncate(uv0 & 0xff), @truncate(uv0 >> 16), top_dst + (2 * x - 1) * xstep);
+                    func(top_y[2 * x - 0], @truncate(uv1 & 0xff), @truncate(uv1 >> 16), top_dst + (2 * x - 0) * xstep);
                 }
                 if (bottom_y != null) {
                     const uv0 = (diag_03 +% l_uv) >> 1;
                     const uv1 = (diag_12 +% uv) >> 1;
-                    FUNC(bottom_y[2 * x - 1], @truncate(uv0 & 0xff), @truncate(uv0 >> 16), bottom_dst + (2 * x - 1) * XSTEP);
-                    FUNC(bottom_y[2 * x + 0], @truncate(uv1 & 0xff), @truncate(uv1 >> 16), bottom_dst + (2 * x + 0) * XSTEP);
+                    func(bottom_y[2 * x - 1], @truncate(uv0 & 0xff), @truncate(uv0 >> 16), bottom_dst + (2 * x - 1) * xstep);
+                    func(bottom_y[2 * x + 0], @truncate(uv1 & 0xff), @truncate(uv1 >> 16), bottom_dst + (2 * x + 0) * xstep);
                 }
                 tl_uv = t_uv;
                 l_uv = uv;
@@ -78,11 +79,11 @@ fn UPSAMPLE_FUNC(comptime FUNC: fn (y: u8, u: u8, v: u8, rgba: [*c]u8) callconv(
             if (len & 1 == 0) {
                 {
                     const uv0 = (3 *% tl_uv +% l_uv +% 0x00020002) >> 2;
-                    FUNC(top_y[@intCast(len - 1)], @truncate(uv0 & 0xff), @truncate(uv0 >> 16), top_dst + @as(usize, @intCast(len - 1)) * XSTEP);
+                    func(top_y[@intCast(len - 1)], @truncate(uv0 & 0xff), @truncate(uv0 >> 16), top_dst + @as(usize, @intCast(len - 1)) * xstep);
                 }
                 if (bottom_y != null) {
                     const uv0 = (3 *% l_uv +% tl_uv +% 0x00020002) >> 2;
-                    FUNC(bottom_y[@intCast(len - 1)], @truncate(uv0 & 0xff), @truncate(uv0 >> 16), bottom_dst + @as(usize, @intCast(len - 1)) * XSTEP);
+                    func(bottom_y[@intCast(len - 1)], @truncate(uv0 & 0xff), @truncate(uv0 >> 16), bottom_dst + @as(usize, @intCast(len - 1)) * xstep);
                 }
             }
         }
@@ -102,17 +103,18 @@ fn EmptyUpsampleFunc(top_y: [*c]const u8, bottom_y: [*c]const u8, top_u: [*c]con
     assert(false); // COLORSPACE SUPPORT NOT COMPILED
 }
 
-const UpsampleRgbaLinePair_C = UPSAMPLE_FUNC(webp.VP8YuvToRgba, 4);
-const UpsampleBgraLinePair_C = UPSAMPLE_FUNC(webp.VP8YuvToBgra, 4);
-const UpsampleArgbLinePair_C: WebPUpsampleLinePairFuncBody = if (!build_options.reduce_csp) UPSAMPLE_FUNC(webp.VP8YuvToArgb, 4) else EmptyUpsampleFunc;
-const UpsampleRgbLinePair_C: WebPUpsampleLinePairFuncBody = if (!build_options.reduce_csp) UPSAMPLE_FUNC(webp.VP8YuvToRgb, 3) else EmptyUpsampleFunc;
-const UpsampleBgrLinePair_C: WebPUpsampleLinePairFuncBody = if (!build_options.reduce_csp) UPSAMPLE_FUNC(webp.VP8YuvToBgr, 3) else EmptyUpsampleFunc;
-const UpsampleRgba4444LinePair_C: WebPUpsampleLinePairFuncBody = if (!build_options.reduce_csp) UPSAMPLE_FUNC(webp.VP8YuvToRgba4444, 2) else EmptyUpsampleFunc;
-const UpsampleRgb565LinePair_C: WebPUpsampleLinePairFuncBody = if (!build_options.reduce_csp) UPSAMPLE_FUNC(webp.VP8YuvToRgb565, 2) else EmptyUpsampleFunc;
+const UpsampleRgbaLinePair_C = UpsampleFunc(webp.VP8YuvToRgba, 4);
+const UpsampleBgraLinePair_C = UpsampleFunc(webp.VP8YuvToBgra, 4);
+const UpsampleArgbLinePair_C: WebPUpsampleLinePairFuncBody = if (!build_options.reduce_csp) UpsampleFunc(webp.VP8YuvToArgb, 4) else EmptyUpsampleFunc;
+const UpsampleRgbLinePair_C: WebPUpsampleLinePairFuncBody = if (!build_options.reduce_csp) UpsampleFunc(webp.VP8YuvToRgb, 3) else EmptyUpsampleFunc;
+const UpsampleBgrLinePair_C: WebPUpsampleLinePairFuncBody = if (!build_options.reduce_csp) UpsampleFunc(webp.VP8YuvToBgr, 3) else EmptyUpsampleFunc;
+const UpsampleRgba4444LinePair_C: WebPUpsampleLinePairFuncBody = if (!build_options.reduce_csp) UpsampleFunc(webp.VP8YuvToRgba4444, 2) else EmptyUpsampleFunc;
+const UpsampleRgb565LinePair_C: WebPUpsampleLinePairFuncBody = if (!build_options.reduce_csp) UpsampleFunc(webp.VP8YuvToRgb565, 2) else EmptyUpsampleFunc;
 
 //------------------------------------------------------------------------------
 
-fn DUAL_SAMPLE_FUNC(comptime FUNC: fn (y: u8, u: u8, v: u8, bgra: [*c]u8) callconv(.Inline) void) WebPUpsampleLinePairFuncBody {
+const DualSampleFuncHandler = fn (y: u8, u: u8, v: u8, bgra: [*c]u8) callconv(.Inline) void;
+fn DualSampleFunc(comptime func: DualSampleFuncHandler) WebPUpsampleLinePairFuncBody {
     return struct {
         fn _(top_y: [*c]const u8, bot_y: [*c]const u8, top_u: [*c]const u8, top_v: [*c]const u8, bot_u: [*c]const u8, bot_v: [*c]const u8, top_dst: [*c]u8, bot_dst: [*c]u8, len: c_int) callconv(.C) void {
             const half_len = len >> 1;
@@ -120,25 +122,25 @@ fn DUAL_SAMPLE_FUNC(comptime FUNC: fn (y: u8, u: u8, v: u8, bgra: [*c]u8) callco
             {
                 var x: usize = 0;
                 while (x < half_len) : (x += 1) {
-                    FUNC(top_y[2 * x + 0], top_u[x], top_v[x], top_dst + 8 * x + 0);
-                    FUNC(top_y[2 * x + 1], top_u[x], top_v[x], top_dst + 8 * x + 4);
+                    func(top_y[2 * x + 0], top_u[x], top_v[x], top_dst + 8 * x + 0);
+                    func(top_y[2 * x + 1], top_u[x], top_v[x], top_dst + 8 * x + 4);
                 }
-                if (len & 1 != 0) FUNC(top_y[2 * x + 0], top_u[x], top_v[x], top_dst + 8 * x);
+                if (len & 1 != 0) func(top_y[2 * x + 0], top_u[x], top_v[x], top_dst + 8 * x);
             }
             if (bot_dst != null) {
                 var x: usize = 0;
                 while (x < half_len) : (x += 1) {
-                    FUNC(bot_y[2 * x + 0], bot_u[x], bot_v[x], bot_dst + 8 * x + 0);
-                    FUNC(bot_y[2 * x + 1], bot_u[x], bot_v[x], bot_dst + 8 * x + 4);
+                    func(bot_y[2 * x + 0], bot_u[x], bot_v[x], bot_dst + 8 * x + 0);
+                    func(bot_y[2 * x + 1], bot_u[x], bot_v[x], bot_dst + 8 * x + 4);
                 }
-                if (len & 1 != 0) FUNC(bot_y[2 * x + 0], bot_u[x], bot_v[x], bot_dst + 8 * x);
+                if (len & 1 != 0) func(bot_y[2 * x + 0], bot_u[x], bot_v[x], bot_dst + 8 * x);
             }
         }
     }._;
 }
 
-const DualLineSamplerBGRA = DUAL_SAMPLE_FUNC(webp.VP8YuvToBgra);
-const DualLineSamplerARGB = DUAL_SAMPLE_FUNC(webp.VP8YuvToArgb);
+const DualLineSamplerBGRA = DualSampleFunc(webp.VP8YuvToBgra);
+const DualLineSamplerARGB = DualSampleFunc(webp.VP8YuvToArgb);
 
 /// General function for converting two lines of ARGB or RGBA.
 /// 'alpha_is_last' should be true if 0xff000000 is stored in memory as
@@ -154,10 +156,11 @@ pub export fn WebPGetLinePairConverter(alpha_is_last: c_int) WebPUpsampleLinePai
 //------------------------------------------------------------------------------
 // YUV444 converter
 
-fn YUV444_FUNC(comptime FUNC: fn (y: u8, u: u8, v: u8, rgba: [*c]u8) callconv(.Inline) void, comptime XSTEP: comptime_int) WebPYUV444ConverterBody {
+const Yuv444FuncHandler = fn (y: u8, u: u8, v: u8, rgba: [*c]u8) callconv(.Inline) void;
+fn Yuv444Func(comptime func: Yuv444FuncHandler, comptime xstep: comptime_int) WebPYUV444ConverterBody {
     return struct {
         fn _(y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, dst: [*c]u8, len: c_int) callconv(.C) void {
-            for (0..@intCast(len)) |i| FUNC(y[i], u[i], v[i], &dst[i * XSTEP]);
+            for (0..@intCast(len)) |i| func(y[i], u[i], v[i], &dst[i * xstep]);
         }
     }._;
 }
@@ -170,13 +173,13 @@ fn EmptyYuv444Func(y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, dst: [*c]u
     _ = len;
 }
 
-pub const WebPYuv444ToRgba_C = YUV444_FUNC(webp.VP8YuvToRgba, 4);
-pub const WebPYuv444ToBgra_C = YUV444_FUNC(webp.VP8YuvToBgra, 4);
-pub const WebPYuv444ToRgb_C: WebPYUV444ConverterBody = if (!build_options.reduce_csp) YUV444_FUNC(webp.VP8YuvToRgb, 3) else EmptyYuv444Func;
-pub const WebPYuv444ToBgr_C: WebPYUV444ConverterBody = if (!build_options.reduce_csp) YUV444_FUNC(webp.VP8YuvToBgr, 3) else EmptyYuv444Func;
-pub const WebPYuv444ToArgb_C: WebPYUV444ConverterBody = if (!build_options.reduce_csp) YUV444_FUNC(webp.VP8YuvToArgb, 4) else EmptyYuv444Func;
-pub const WebPYuv444ToRgba4444_C: WebPYUV444ConverterBody = if (!build_options.reduce_csp) YUV444_FUNC(webp.VP8YuvToRgba4444, 2) else EmptyYuv444Func;
-pub const WebPYuv444ToRgb565_C: WebPYUV444ConverterBody = if (!build_options.reduce_csp) YUV444_FUNC(webp.VP8YuvToRgb565, 2) else EmptyYuv444Func;
+pub const WebPYuv444ToRgba_C = Yuv444Func(webp.VP8YuvToRgba, 4);
+pub const WebPYuv444ToBgra_C = Yuv444Func(webp.VP8YuvToBgra, 4);
+pub const WebPYuv444ToRgb_C: WebPYUV444ConverterBody = if (!build_options.reduce_csp) Yuv444Func(webp.VP8YuvToRgb, 3) else EmptyYuv444Func;
+pub const WebPYuv444ToBgr_C: WebPYUV444ConverterBody = if (!build_options.reduce_csp) Yuv444Func(webp.VP8YuvToBgr, 3) else EmptyYuv444Func;
+pub const WebPYuv444ToArgb_C: WebPYUV444ConverterBody = if (!build_options.reduce_csp) Yuv444Func(webp.VP8YuvToArgb, 4) else EmptyYuv444Func;
+pub const WebPYuv444ToRgba4444_C: WebPYUV444ConverterBody = if (!build_options.reduce_csp) Yuv444Func(webp.VP8YuvToRgba4444, 2) else EmptyYuv444Func;
+pub const WebPYuv444ToRgb565_C: WebPYUV444ConverterBody = if (!build_options.reduce_csp) Yuv444Func(webp.VP8YuvToRgb565, 2) else EmptyYuv444Func;
 comptime {
     @export(WebPYuv444ToRgba_C, .{ .name = "WebPYuv444ToRgba_C" });
     @export(WebPYuv444ToBgra_C, .{ .name = "WebPYuv444ToBgra_C" });
