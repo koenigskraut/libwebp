@@ -10,6 +10,36 @@ pub const VP8WHT = ?*const fn ([*c]const i16, [*c]i16) callconv(.C) void;
 pub usingnamespace @import("dec.zig");
 
 //------------------------------------------------------------------------------
+// WebP I/O
+
+/// Convert a pair of y/u/v lines together to the output rgb/a colorspace.
+/// bottom_y can be NULL if only one line of output is needed (at top/bottom).
+pub const WebPUpsampleLinePairFunc = ?*const fn (top_y: [*c]const u8, bottom_y: [*c]const u8, top_u: [*c]const u8, top_v: [*c]const u8, cur_u: [*c]const u8, cur_v: [*c]const u8, top_dst: [*c]u8, bottom_dst: [*c]u8, len: c_int) callconv(.C) void;
+
+/// Fancy upsampling functions to convert YUV to RGB(A) modes
+pub const WebPUpsamplers: [*c]WebPUpsampleLinePairFunc = @extern([*c]WebPUpsampleLinePairFunc, .{ .name = "WebPUpsamplers" });
+
+pub usingnamespace @import("yuv.zig");
+
+/// General function for converting two lines of ARGB or RGBA.
+/// 'alpha_is_last' should be true if 0xff000000 is stored in memory as
+/// as 0x00, 0x00, 0x00, 0xff (little endian).
+pub extern fn WebPGetLinePairConverter(alpha_is_last: c_int) callconv(.C) WebPUpsampleLinePairFunc;
+
+/// YUV444->RGB converters
+pub const WebPYUV444Converter = ?*const fn (y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, dst: [*c]u8, len: c_int) callconv(.C) void;
+pub const WebPYUV444Converters: [*c]WebPYUV444Converter = @extern([*c]WebPYUV444Converter, .{ .name = "WebPYUV444Converters" });
+
+/// Must be called before using the WebPUpsamplers[] (and for premultiplied
+/// colorspaces like rgbA, rgbA4444, etc)
+pub extern fn WebPInitUpsamplers() callconv(.C) void;
+
+/// Must be called before using WebPYUV444Converters[]
+pub extern fn WebPInitYUV444Converters() callconv(.C) void;
+
+//------------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------
 // Filter functions
 
 /// Filter types.

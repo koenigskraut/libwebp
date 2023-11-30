@@ -4,24 +4,12 @@ const webp = struct {
     usingnamespace @import("vp8_dec.zig");
     usingnamespace @import("webp_dec.zig");
     usingnamespace @import("../dsp/alpha_processing.zig");
+    usingnamespace @import("../dsp/dsp.zig");
     usingnamespace @import("../utils/rescaler_utils.zig");
     usingnamespace @import("../utils/utils.zig");
     usingnamespace @import("../webp/decode.zig");
 
-    const WebPSamplerRowFunc = ?*const fn ([*c]const u8, [*c]const u8, [*c]const u8, [*c]u8, c_int) callconv(.C) void;
-    extern fn WebPSamplerProcessPlane(y: [*c]const u8, y_stride: c_int, u: [*c]const u8, v: [*c]const u8, uv_stride: c_int, dst: [*c]u8, dst_stride: c_int, width: c_int, height: c_int, func: WebPSamplerRowFunc) void;
-    const WebPSamplers: [*c]WebPSamplerRowFunc = @extern([*c]WebPSamplerRowFunc, .{ .name = "WebPSamplers" });
-
-    const WebPUpsampleLinePairFunc = ?*const fn ([*c]const u8, [*c]const u8, [*c]const u8, [*c]const u8, [*c]const u8, [*c]const u8, [*c]u8, [*c]u8, c_int) callconv(.C) void;
-    const WebPUpsamplers: [*c]WebPUpsampleLinePairFunc = @extern([*c]WebPUpsampleLinePairFunc, .{ .name = "WebPUpsamplers" });
-
-    const WebPYUV444Converter = ?*const fn ([*c]const u8, [*c]const u8, [*c]const u8, [*c]u8, c_int) callconv(.C) void;
-    const WebPYUV444Converters: [*c]WebPYUV444Converter = @extern([*c]WebPYUV444Converter, .{ .name = "WebPYUV444Converters" });
-
-    extern fn WebPInitSamplers() void;
-    extern fn WebPInitUpsamplers() void;
     extern fn WebPRescalerExportRow(wrk: [*c]@This().WebPRescaler) void;
-    extern fn WebPInitYUV444Converters() void;
 };
 
 const assert = std.debug.assert;

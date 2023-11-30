@@ -6,6 +6,7 @@ const webp = struct {
     pub usingnamespace @import("vp8_dec.zig");
     pub usingnamespace @import("webp_dec.zig");
     pub usingnamespace @import("../dsp/alpha_processing.zig");
+    pub usingnamespace @import("../dsp/dsp.zig");
     pub usingnamespace @import("../dsp/lossless_common.zig");
     pub usingnamespace @import("../webp/decode.zig");
     pub usingnamespace @import("../webp/format_constants.zig");
@@ -19,17 +20,8 @@ const webp = struct {
     extern fn VP8LDspInit() void;
     extern fn VP8LColorIndexInverseTransformAlpha(transform: [*c]const VP8LTransform, y_start: c_int, y_end: c_int, src: [*c]const u8, dst: [*c]u8) void;
 
-    pub const WebPUnfilterFunc = ?*const fn ([*c]const u8, [*c]const u8, [*c]u8, c_int) callconv(.C) void;
-    pub extern var WebPUnfilters: [4]WebPUnfilterFunc;
-
     extern fn VP8LConvertFromBGRA(in_data: [*c]const u32, num_pixels: c_int, out_colorspace: @This().ColorspaceMode, rgba: [*c]u8) void;
 
-    extern var WebPConvertARGBToY: ?*const fn ([*c]const u32, [*c]u8, c_int) callconv(.C) void;
-    extern var WebPConvertARGBToUV: ?*const fn ([*c]const u32, [*c]u8, [*c]u8, c_int, c_int) callconv(.C) void;
-    extern var WebPConvertRGBA32ToUV: ?*const fn ([*c]const u16, [*c]u8, [*c]u8, c_int) callconv(.C) void;
-    extern var WebPConvertRGB24ToY: ?*const fn ([*c]const u8, [*c]u8, c_int) callconv(.C) void;
-    extern var WebPConvertBGR24ToY: ?*const fn ([*c]const u8, [*c]u8, c_int) callconv(.C) void;
-    extern fn WebPInitConvertARGBToYUV() void;
     extern fn WebPRescalerExportRow(wrk: [*c]@This().WebPRescaler) void;
 };
 
