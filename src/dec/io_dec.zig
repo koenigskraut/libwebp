@@ -8,8 +8,6 @@ const webp = struct {
     usingnamespace @import("../utils/rescaler_utils.zig");
     usingnamespace @import("../utils/utils.zig");
     usingnamespace @import("../webp/decode.zig");
-
-    extern fn WebPRescalerExportRow(wrk: [*c]@This().WebPRescaler) void;
 };
 
 const assert = std.debug.assert;
@@ -332,9 +330,9 @@ fn ExportRGB(p: *webp.DecParams, y_pos: c_int) c_int {
     {
         assert(y_pos + num_lines_out < p.output.?.height);
         assert(p.scaler_u.?.y_accum == p.scaler_v.?.y_accum);
-        webp.WebPRescalerExportRow(p.scaler_y);
-        webp.WebPRescalerExportRow(p.scaler_u);
-        webp.WebPRescalerExportRow(p.scaler_v);
+        webp.WebPRescalerExportRow(p.scaler_y.?);
+        webp.WebPRescalerExportRow(p.scaler_u.?);
+        webp.WebPRescalerExportRow(p.scaler_v.?);
         convert(p.scaler_y.?.dst, p.scaler_u.?.dst, p.scaler_v.?.dst, dst, p.scaler_y.?.dst_width);
         dst = webp.offsetPtr(dst, buf.stride);
         num_lines_out += 1;
@@ -416,7 +414,7 @@ fn ExportAlphaRGBA4444(p: *webp.DecParams, y_pos: c_int, max_lines_out: c_int) c
         num_lines_out < max_lines_out)
     {
         assert(y_pos + num_lines_out < p.output.?.height);
-        webp.WebPRescalerExportRow(p.scaler_a);
+        webp.WebPRescalerExportRow(p.scaler_a.?);
         for (0..@abs(width)) |i| {
             // Fill in the alpha value (converted to 4 bits).
             const alpha_value: u32 = p.scaler_a.?.dst[i] >> 4;

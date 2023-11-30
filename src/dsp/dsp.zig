@@ -17,6 +17,9 @@ pub usingnamespace @import("upsampling.zig");
 pub usingnamespace @import("yuv.zig");
 
 //------------------------------------------------------------------------------
+// Rescaler
+
+pub usingnamespace @import("rescaler.zig");
 
 //------------------------------------------------------------------------------
 // Filter functions

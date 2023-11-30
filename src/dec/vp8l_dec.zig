@@ -21,8 +21,6 @@ const webp = struct {
     extern fn VP8LColorIndexInverseTransformAlpha(transform: [*c]const VP8LTransform, y_start: c_int, y_end: c_int, src: [*c]const u8, dst: [*c]u8) void;
 
     extern fn VP8LConvertFromBGRA(in_data: [*c]const u32, num_pixels: c_int, out_colorspace: @This().ColorspaceMode, rgba: [*c]u8) void;
-
-    extern fn WebPRescalerExportRow(wrk: [*c]@This().WebPRescaler) void;
 };
 
 const assert = std.debug.assert;
