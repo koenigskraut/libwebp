@@ -38,19 +38,19 @@ inline fn VP8YUVToB(y: c_int, u: c_int) c_int {
     return VP8Clip8(MultHi(y, 19077) + MultHi(u, 33050) - 17685);
 }
 
-pub inline fn VP8YuvToRgb(y: c_int, u: c_int, v: c_int, rgb: [*c]u8) void {
+pub inline fn VP8YuvToRgb(y: u8, u: u8, v: u8, rgb: [*c]u8) void {
     rgb[0] = @truncate(@as(c_uint, @bitCast(VP8YUVToR(y, v))));
     rgb[1] = @truncate(@as(c_uint, @bitCast(VP8YUVToG(y, u, v))));
     rgb[2] = @truncate(@as(c_uint, @bitCast(VP8YUVToB(y, u))));
 }
 
-pub inline fn VP8YuvToBgr(y: c_int, u: c_int, v: c_int, bgr: [*c]u8) void {
+pub inline fn VP8YuvToBgr(y: u8, u: u8, v: u8, bgr: [*c]u8) void {
     bgr[0] = @truncate(@as(c_uint, @bitCast(VP8YUVToB(y, u))));
     bgr[1] = @truncate(@as(c_uint, @bitCast(VP8YUVToG(y, u, v))));
     bgr[2] = @truncate(@as(c_uint, @bitCast(VP8YUVToR(y, v))));
 }
 
-pub inline fn VP8YuvToRgb565(y: c_int, u: c_int, v: c_int, rgb: [*c]u8) void {
+pub inline fn VP8YuvToRgb565(y: u8, u: u8, v: u8, rgb: [*c]u8) void {
     const r = VP8YUVToR(y, v); // 5 usable bits
     const g = VP8YUVToG(y, u, v); // 6 usable bits
     const b = VP8YUVToB(y, u); // 5 usable bits
@@ -65,7 +65,7 @@ pub inline fn VP8YuvToRgb565(y: c_int, u: c_int, v: c_int, rgb: [*c]u8) void {
     }
 }
 
-pub inline fn VP8YuvToRgba4444(y: c_int, u: c_int, v: c_int, argb: [*c]u8) void {
+pub inline fn VP8YuvToRgba4444(y: u8, u: u8, v: u8, argb: [*c]u8) void {
     const r = VP8YUVToR(y, v); // 4 usable bits
     const g = VP8YUVToG(y, u, v); // 4 usable bits
     const b = VP8YUVToB(y, u); // 4 usable bits

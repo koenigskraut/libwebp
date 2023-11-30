@@ -9,6 +9,7 @@ pub fn build(b: *std.Build) !void {
     const use_tables_for_alpha_mult = b.option(bool, "use-tables-for-alpha-mult", "") orelse false;
     const dsp_omit_c_code = b.option(bool, "dsp-omit-c-code", "") orelse true;
     const use_static_tables = b.option(bool, "use-static-tables", "") orelse true;
+    const reduce_csp = b.option(bool, "reduce-csp", "") orelse false;
 
     const options = b.addOptions();
     options.addOption(bool, "reduce_size", reduce_size);
@@ -17,6 +18,7 @@ pub fn build(b: *std.Build) !void {
     options.addOption(bool, "use_tables_for_alpha_mult", use_tables_for_alpha_mult);
     options.addOption(bool, "dsp_omit_c_code", dsp_omit_c_code);
     options.addOption(bool, "use_static_tables", use_static_tables);
+    options.addOption(bool, "reduce_csp", reduce_csp);
 
     const lib = b.addStaticLibrary(.{
         .name = "webp",
@@ -199,7 +201,9 @@ const dsp_dec_srsc: StrSlice = &.{
     "src/dsp/alpha_processing_neon.c",
     "src/dsp/alpha_processing_sse2.c",
     // "src/dsp/alpha_processing_sse41.c",
+
     "src/dsp/cpu.c",
+
     // "src/dsp/dec.c",
     // "src/dsp/dec_clip_tables.c",
     "src/dsp/dec_mips32.c",
@@ -208,29 +212,28 @@ const dsp_dec_srsc: StrSlice = &.{
     "src/dsp/dec_neon.c",
     "src/dsp/dec_sse2.c",
     // "src/dsp/dec_sse41.c",
-    "src/dsp/filters.c",
-    "src/dsp/filters_mips_dsp_r2.c",
-    "src/dsp/filters_msa.c",
-    "src/dsp/filters_neon.c",
-    "src/dsp/filters_sse2.c",
+
     "src/dsp/lossless.c",
     "src/dsp/lossless_mips_dsp_r2.c",
     "src/dsp/lossless_msa.c",
     "src/dsp/lossless_neon.c",
     "src/dsp/lossless_sse2.c",
     "src/dsp/lossless_sse41.c",
+
     "src/dsp/rescaler.c",
     "src/dsp/rescaler_mips32.c",
     "src/dsp/rescaler_mips_dsp_r2.c",
     "src/dsp/rescaler_msa.c",
     "src/dsp/rescaler_neon.c",
     "src/dsp/rescaler_sse2.c",
-    "src/dsp/upsampling.c",
+
+    // "src/dsp/upsampling.c",
     "src/dsp/upsampling_mips_dsp_r2.c",
     "src/dsp/upsampling_msa.c",
     "src/dsp/upsampling_neon.c",
     "src/dsp/upsampling_sse2.c",
     "src/dsp/upsampling_sse41.c",
+
     // "src/dsp/yuv.c",
     "src/dsp/yuv_mips32.c",
     "src/dsp/yuv_mips_dsp_r2.c",
@@ -252,6 +255,11 @@ const dsp_enc_srcs: StrSlice = &.{
     "src/dsp/enc_neon.c",
     "src/dsp/enc_sse2.c",
     "src/dsp/enc_sse41.c",
+    "src/dsp/filters.c",
+    "src/dsp/filters_mips_dsp_r2.c",
+    "src/dsp/filters_msa.c",
+    "src/dsp/filters_neon.c",
+    "src/dsp/filters_sse2.c",
     "src/dsp/lossless_enc.c",
     "src/dsp/lossless_enc_mips32.c",
     "src/dsp/lossless_enc_mips_dsp_r2.c",
