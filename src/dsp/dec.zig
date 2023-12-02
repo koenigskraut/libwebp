@@ -849,6 +849,7 @@ extern fn VP8DspInitMIPS32() void;
 extern fn VP8DspInitMIPSdspR2() void;
 extern fn VP8DspInitMSA() void;
 
+/// must be called before anything using the above
 pub const VP8DspInit = webp.WEBP_DSP_INIT_FUNC(struct {
     pub fn _() void {
         webp.VP8InitClipTables();

@@ -140,7 +140,7 @@ comptime {
     @export(YuvToRgb565Row, .{ .name = "YuvToRgb565Row" });
 }
 
-// Main call for processing a plane with a WebPSamplerRowFunc function:
+/// Main call for processing a plane with a WebPSamplerRowFunc function:
 pub export fn WebPSamplerProcessPlane(
     y_: [*c]const u8,
     y_stride: c_int,
@@ -261,6 +261,7 @@ fn ConvertARGBToY_C(argb: [*c]const u32, y: [*c]u8, width: c_int) callconv(.C) v
     }
 }
 
+/// used for plain-C fallback.
 pub export fn WebPConvertARGBToUV_C(argb: [*c]const u32, u: [*c]u8, v: [*c]u8, src_width: c_int, do_store: c_bool) callconv(.C) void {
     // No rounding. Last pixel is dealt with separately.
     const uv_width = src_width >> 1;
@@ -321,6 +322,7 @@ fn ConvertBGR24ToY_C(bgr_: [*c]const u8, y: [*c]u8, width: c_int) callconv(.C) v
     }
 }
 
+/// used for plain-C fallback.
 pub export fn WebPConvertRGBA32ToUV_C(rgb_: [*c]const u16, u: [*c]u8, v: [*c]u8, width: c_int) callconv(.C) void {
     if (true) @panic("c");
     var rgb = rgb_;
@@ -336,11 +338,21 @@ pub export fn WebPConvertRGBA32ToUV_C(rgb_: [*c]const u16, u: [*c]u8, v: [*c]u8,
 
 //-----------------------------------------------------------------------------
 
+/// Convert RGB to Y
 pub var WebPConvertRGB24ToY: ?*const fn (rgb: [*c]const u8, y: [*c]u8, width: c_int) callconv(.C) void = null;
+
+/// Convert BGR to Y
 pub var WebPConvertBGR24ToY: ?*const fn (bgr: [*c]const u8, y: [*c]u8, width: c_int) callconv(.C) void = null;
+
+/// Convert a row of accumulated (four-values) of rgba32 toward U/V
 pub var WebPConvertRGBA32ToUV: ?*const fn (rgb: [*c]const u16, u: [*c]u8, v: [*c]u8, width: c_int) callconv(.C) void = null;
 
+/// Convert ARGB samples to luma Y.
 pub var WebPConvertARGBToY: ?*const fn (argb: [*c]const u32, y: [*c]u8, width: c_int) callconv(.C) void = null;
+
+/// Convert ARGB samples to U/V with downsampling. do_store should be '1' for
+/// even lines and '0' for odd ones. 'src_width' is the original width, not
+/// the U/V one.
 pub var WebPConvertARGBToUV: ?*const fn (argb: [*c]const u32, u: [*c]u8, v: [*c]u8, src_width: c_int, do_store: c_bool) callconv(.C) void = null;
 
 comptime {
@@ -356,6 +368,7 @@ extern fn WebPInitConvertARGBToYUVSSE2() callconv(.C) void;
 extern fn WebPInitConvertARGBToYUVSSE41() callconv(.C) void;
 extern fn WebPInitConvertARGBToYUVNEON() callconv(.C) void;
 
+// Must be called before using the above.
 pub const WebPInitConvertARGBToYUV = webp.WEBP_DSP_INIT_FUNC(struct {
     fn _() void {
         WebPConvertARGBToY = &ConvertARGBToY_C;

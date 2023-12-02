@@ -5,9 +5,8 @@ const webp = struct {
     pub usingnamespace @import("alpha_dec.zig");
     pub usingnamespace @import("vp8_dec.zig");
     pub usingnamespace @import("webp_dec.zig");
-    pub usingnamespace @import("../dsp/alpha_processing.zig");
     pub usingnamespace @import("../dsp/dsp.zig");
-    pub usingnamespace @import("../dsp/lossless_common.zig");
+    pub usingnamespace @import("../dsp/lossless.zig");
     pub usingnamespace @import("../webp/decode.zig");
     pub usingnamespace @import("../webp/format_constants.zig");
     pub usingnamespace @import("../utils/bit_reader_utils.zig");
@@ -15,12 +14,6 @@ const webp = struct {
     pub usingnamespace @import("../utils/huffman_utils.zig");
     pub usingnamespace @import("../utils/rescaler_utils.zig");
     pub usingnamespace @import("../utils/utils.zig");
-
-    extern fn VP8LInverseTransform(transform: [*c]const VP8LTransform, row_start: c_int, row_end: c_int, in: [*c]const u32, out: [*c]u32) void;
-    extern fn VP8LDspInit() void;
-    extern fn VP8LColorIndexInverseTransformAlpha(transform: [*c]const VP8LTransform, y_start: c_int, y_end: c_int, src: [*c]const u8, dst: [*c]u8) void;
-
-    extern fn VP8LConvertFromBGRA(in_data: [*c]const u32, num_pixels: c_int, out_colorspace: @This().ColorspaceMode, rgba: [*c]u8) void;
 };
 
 const assert = std.debug.assert;

@@ -14,12 +14,20 @@ pub usingnamespace @import("dec.zig");
 
 pub usingnamespace @import("upsampling.zig");
 
+//------------------------------------------------------------------------------
+// ARGB -> YUV converters
+
 pub usingnamespace @import("yuv.zig");
 
 //------------------------------------------------------------------------------
 // Rescaler
 
 pub usingnamespace @import("rescaler.zig");
+
+//------------------------------------------------------------------------------
+// Utilities for processing transparent channel.
+
+pub usingnamespace @import("alpha_processing.zig");
 
 //------------------------------------------------------------------------------
 // Filter functions

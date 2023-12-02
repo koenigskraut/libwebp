@@ -2,10 +2,9 @@ const std = @import("std");
 const build_options = @import("build_options");
 const webp = struct {
     usingnamespace @import("webp_dec.zig");
+    usingnamespace @import("../utils/rescaler_utils.zig");
     usingnamespace @import("../utils/utils.zig");
     usingnamespace @import("../webp/decode.zig");
-
-    extern fn WebPRescalerGetScaledDimensions(src_width: c_int, src_height: c_int, scaled_width: ?*c_int, scaled_height: ?*c_int) c_int;
 };
 
 const assert = std.debug.assert;

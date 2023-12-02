@@ -190,9 +190,9 @@ comptime {
     @export(WebPYuv444ToRgb565_C, .{ .name = "WebPYuv444ToRgb565_C" });
 }
 
-// YUV444->RGB converters
 const WebPYUV444ConverterBody = fn (y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, dst: [*c]u8, len: c_int) callconv(.C) void;
 pub const WebPYUV444Converter = ?*const WebPYUV444ConverterBody;
+/// YUV444->RGB converters
 pub var WebPYUV444Converters = [_]WebPYUV444Converter{null} ** @intFromEnum(CspMode.LAST);
 comptime {
     @export(WebPYUV444Converters, .{ .name = "WebPYUV444Converters" });

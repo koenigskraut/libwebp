@@ -123,7 +123,8 @@ inline fn GetScale(a: u32, inverse: bool) u32 {
         (if (inverse) (255 << MFIX) / a else a * KINV_255);
 }
 
-pub export fn WebPMultARGBRow_C(ptr: [*c]u32, width: c_int, inverse: c_int) void {
+/// Plain-C version, used as fallback by some implementations.
+pub export fn WebPMultARGBRow_C(ptr: [*c]u32, width: c_int, inverse: c_int) callconv(.C) void {
     for (0..@intCast(width)) |x| {
         const argb = ptr[x];
         if (argb < 0xff000000) { // alpha < 255
@@ -142,7 +143,8 @@ pub export fn WebPMultARGBRow_C(ptr: [*c]u32, width: c_int, inverse: c_int) void
     }
 }
 
-pub export fn WebPMultRow_C(noalias ptr: [*c]u8, noalias alpha: [*c]const u8, width: c_int, inverse: c_int) void {
+/// Plain-C version, used as fallback by some implementations.
+pub export fn WebPMultRow_C(noalias ptr: [*c]u8, noalias alpha: [*c]const u8, width: c_int, inverse: c_int) callconv(.C) void {
     for (0..@intCast(width)) |x| {
         const a = alpha[x];
         if (a != 255) {
@@ -156,15 +158,11 @@ pub export fn WebPMultRow_C(noalias ptr: [*c]u8, noalias alpha: [*c]const u8, wi
     }
 }
 
-pub var WebPMultARGBRow: ?*const fn (ptr: [*c]u32, width: c_int, inverse: c_int) callconv(.C) void = null;
-pub var WebPMultRow: ?*const fn (noalias ptr: [*c]u8, noalias alpha: [*c]const u8, width: c_int, inverse: c_int) callconv(.C) void = null;
-comptime {
-    @export(WebPMultARGBRow, .{ .name = "WebPMultARGBRow" });
-    @export(WebPMultRow, .{ .name = "WebPMultRow" });
-}
 //------------------------------------------------------------------------------
 // Generic per-plane calls
 
+/// Pre-Multiply or Un-Multiply (if 'inverse' is true) argb values in a row,
+/// for several rows.
 pub export fn WebPMultARGBRows(ptr_: [*c]u8, stride: c_int, width: c_int, num_rows: c_int, inverse: c_int) void {
     var ptr = ptr_;
     for (0..@intCast(num_rows)) |_| {
@@ -173,6 +171,8 @@ pub export fn WebPMultARGBRows(ptr_: [*c]u8, stride: c_int, width: c_int, num_ro
     }
 }
 
+/// Pre-Multiply or Un-Multiply (if 'inverse' is true) a several `num_rows` of
+/// values, with side alpha values.
 pub export fn WebPMultRows(noalias ptr_: [*c]u8, stride: c_int, noalias alpha_: [*c]const u8, alpha_stride: c_int, width: c_int, num_rows: c_int, inverse: c_int) void {
     var ptr, var alpha = .{ ptr_, alpha_ };
     for (0..@intCast(num_rows)) |_| {
@@ -208,7 +208,7 @@ inline fn PREMULTIPLY(x: u32, m: u32) u32 {
     }
 }
 
-fn ApplyAlphaMultiply_C(rgba_: [*c]u8, alpha_first: c_int, w: c_int, h_: c_int, stride: c_int) void {
+fn ApplyAlphaMultiply_C(rgba_: [*c]u8, alpha_first: c_int, w: c_int, h_: c_int, stride: c_int) callconv(.C) void {
     var h, var rgba = .{ h_, rgba_ };
     while (h > 0) : (h -= 1) {
         const rgb = rgba + if (alpha_first != 0) @as(usize, 1) else 0;
@@ -262,14 +262,14 @@ inline fn ApplyAlphaMultiply4444_C(rgba4444_: [*c]u8, w: c_int, h_: c_int, strid
     }
 }
 
-fn ApplyAlphaMultiply_16b_C(rgba4444: [*c]u8, w: c_int, h: c_int, stride: c_int) void {
+fn ApplyAlphaMultiply_16b_C(rgba4444: [*c]u8, w: c_int, h: c_int, stride: c_int) callconv(.C) void {
     if (comptime build_options.swap_16bit_csp)
         ApplyAlphaMultiply4444_C(rgba4444, w, h, stride, 1)
     else
         ApplyAlphaMultiply4444_C(rgba4444, w, h, stride, 0);
 }
 
-fn DispatchAlpha_C(noalias alpha_: [*c]const u8, alpha_stride: c_int, width: c_int, height: c_int, noalias dst_: [*c]u8, dst_stride: c_int) c_bool {
+fn DispatchAlpha_C(noalias alpha_: [*c]const u8, alpha_stride: c_int, width: c_int, height: c_int, noalias dst_: [*c]u8, dst_stride: c_int) callconv(.C) c_bool {
     if (comptime webp.neon_omit_c_code) return;
     var alpha, var dst = .{ alpha_, dst_ };
     var alpha_mask: u32 = 0xff;
@@ -286,7 +286,7 @@ fn DispatchAlpha_C(noalias alpha_: [*c]const u8, alpha_stride: c_int, width: c_i
     return @intFromBool(alpha_mask != 0xff);
 }
 
-fn DispatchAlphaToGreen_C(noalias alpha_: [*c]const u8, alpha_stride: c_int, width: c_int, height: c_int, noalias dst_: [*c]u32, dst_stride: c_int) void {
+fn DispatchAlphaToGreen_C(noalias alpha_: [*c]const u8, alpha_stride: c_int, width: c_int, height: c_int, noalias dst_: [*c]u32, dst_stride: c_int) callconv(.C) void {
     var alpha, var dst = .{ alpha_, dst_ };
 
     for (0..@intCast(height)) |_| {
@@ -298,7 +298,7 @@ fn DispatchAlphaToGreen_C(noalias alpha_: [*c]const u8, alpha_stride: c_int, wid
     }
 }
 
-fn ExtractAlpha_C(noalias argb_: [*c]const u8, argb_stride: c_int, width: c_int, height: c_int, noalias alpha_: [*c]u8, alpha_stride: c_int) c_bool {
+fn ExtractAlpha_C(noalias argb_: [*c]const u8, argb_stride: c_int, width: c_int, height: c_int, noalias alpha_: [*c]u8, alpha_stride: c_int) callconv(.C) c_bool {
     var alpha, var argb = .{ alpha_, argb_ };
     var alpha_mask: u8 = 0xff;
 
@@ -314,13 +314,13 @@ fn ExtractAlpha_C(noalias argb_: [*c]const u8, argb_stride: c_int, width: c_int,
     return @intFromBool(alpha_mask == 0xff);
 }
 
-fn ExtractGreen_C(noalias argb: [*c]const u32, noalias alpha: [*c]u8, size: c_int) void {
+fn ExtractGreen_C(noalias argb: [*c]const u32, noalias alpha: [*c]u8, size: c_int) callconv(.C) void {
     for (0..@intCast(size)) |i| alpha[i] = @truncate(argb[i] >> 8);
 }
 
 //------------------------------------------------------------------------------
 
-fn HasAlpha8b_C(src_: [*c]const u8, length_: c_int) c_int {
+fn HasAlpha8b_C(src_: [*c]const u8, length_: c_int) callconv(.C) c_int {
     var src, var length = .{ src_, length_ };
     while (length > 0) : (length -= 1) {
         if (src.* != 0xff) return 1;
@@ -329,7 +329,7 @@ fn HasAlpha8b_C(src_: [*c]const u8, length_: c_int) c_int {
     return 0;
 }
 
-fn HasAlpha32b_C(src: [*c]const u8, length_: c_int) c_int {
+fn HasAlpha32b_C(src: [*c]const u8, length_: c_int) callconv(.C) c_int {
     var x: usize, var length = .{ 0, length_ };
     while (length > 0) : ({
         length -= 1;
@@ -338,7 +338,7 @@ fn HasAlpha32b_C(src: [*c]const u8, length_: c_int) c_int {
     return 0;
 }
 
-fn AlphaReplace_C(src: [*c]u32, length: c_int, color: u32) void {
+fn AlphaReplace_C(src: [*c]u32, length: c_int, color: u32) callconv(.C) void {
     for (0..@intCast(length)) |x| {
         if ((src[x] >> 24) == 0) src[x] = color;
     }
@@ -351,7 +351,7 @@ inline fn MakeARGB32(a: u8, r: u8, g: u8, b: u8) u32 {
     return ((@as(u32, a) << 24) | (@as(u32, r) << 16) | (@as(u32, g) << 8) | @as(u32, b));
 }
 
-fn PackARGB_C(noalias a: [*c]const u8, noalias r: [*c]const u8, noalias g: [*c]const u8, noalias b: [*c]const u8, len: c_int, noalias out: [*c]u32) void {
+fn PackARGB_C(noalias a: [*c]const u8, noalias r: [*c]const u8, noalias g: [*c]const u8, noalias b: [*c]const u8, len: c_int, noalias out: [*c]u32) callconv(.C) void {
     if (comptime big_endian) {
         for (0..@intCast(len)) |i| {
             out[i] = MakeARGB32(a[4 * i], r[4 * i], g[4 * i], b[4 * i]);
@@ -359,7 +359,7 @@ fn PackARGB_C(noalias a: [*c]const u8, noalias r: [*c]const u8, noalias g: [*c]c
     }
 }
 
-fn PackRGB_C(noalias r: [*c]const u8, noalias g: [*c]const u8, noalias b: [*c]const u8, len: c_int, step: c_int, noalias out: [*c]u32) void {
+fn PackRGB_C(noalias r: [*c]const u8, noalias g: [*c]const u8, noalias b: [*c]const u8, len: c_int, step: c_int, noalias out: [*c]u32) callconv(.C) void {
     var offset: usize = 0;
     for (0..@intCast(len)) |i| {
         out[i] = MakeARGB32(0xff, r[offset], g[offset], b[offset]);
@@ -367,18 +367,47 @@ fn PackRGB_C(noalias r: [*c]const u8, noalias g: [*c]const u8, noalias b: [*c]co
     }
 }
 
+/// Apply alpha pre-multiply on an rgba, bgra or argb plane of size w * h.
+/// alpha_first should be 0 for argb, 1 for rgba or bgra (where alpha is last).
 pub var WebPApplyAlphaMultiply: ?*const fn ([*c]u8, c_int, c_int, c_int, c_int) callconv(.C) void = null;
+/// Same, buf specifically for RGBA4444 format
 pub var WebPApplyAlphaMultiply4444: ?*const fn ([*c]u8, c_int, c_int, c_int) callconv(.C) void = null;
+/// Dispatch the values from alpha[] plane to the ARGB destination 'dst'.
+/// Returns true if alpha[] plane has non-trivial values different from 0xff.
 pub var WebPDispatchAlpha: ?*const fn (noalias [*c]const u8, c_int, c_int, c_int, noalias [*c]u8, c_int) callconv(.C) c_int = null;
+/// Transfer packed 8b alpha[] values to green channel in dst[], zero'ing the
+/// A/R/B values. 'dst_stride' is the stride for dst[] in uint32_t units.
 pub var WebPDispatchAlphaToGreen: ?*const fn (noalias [*c]const u8, c_int, c_int, c_int, noalias [*c]u32, c_int) callconv(.C) void = null;
+/// Extract the alpha values from 32b values in argb[] and pack them into alpha[]
+/// (this is the opposite of WebPDispatchAlpha).
+/// Returns true if there's only trivial 0xff alpha values.
 pub var WebPExtractAlpha: ?*const fn (noalias [*c]const u8, c_int, c_int, c_int, noalias [*c]u8, c_int) callconv(.C) c_int = null;
+/// Extract the green values from 32b values in argb[] and pack them into alpha[]
+/// (this is the opposite of WebPDispatchAlphaToGreen).
 pub var WebPExtractGreen: ?*const fn (noalias [*c]const u32, noalias [*c]u8, c_int) callconv(.C) void = null;
-/// is endian == .big
-pub var WebPPackARGB: ?*const fn (a: [*c]const u8, r: [*c]const u8, g: [*c]const u8, b: [*c]const u8, c_int, [*c]u32) callconv(.C) void = null;
-pub var WebPPackRGB: ?*const fn (noalias [*c]const u8, noalias [*c]const u8, noalias [*c]const u8, c_int, c_int, noalias [*c]u32) callconv(.C) void = null;
-pub var WebPHasAlpha8b: ?*const fn ([*c]const u8, c_int) callconv(.C) c_int = null;
-pub var WebPHasAlpha32b: ?*const fn ([*c]const u8, c_int) callconv(.C) c_int = null;
-pub var WebPAlphaReplace: ?*const fn ([*c]u32, c_int, u32) callconv(.C) void = null;
+
+// Pre-Multiply operation transforms x into x * A / 255  (where x=Y,R,G or B).
+// Un-Multiply operation transforms x into x * 255 / A.
+
+/// Pre-Multiply or Un-Multiply (if 'inverse' is true) argb values in a row.
+pub var WebPMultARGBRow: ?*const fn (ptr: [*c]u32, width: c_int, inverse: c_int) callconv(.C) void = null;
+/// Pre-Multiply or Un-Multiply (if 'inverse' is true) a row of single values, with side alpha values.
+pub var WebPMultRow: ?*const fn (noalias ptr: [*c]u8, noalias alpha: [*c]const u8, width: c_int, inverse: c_int) callconv(.C) void = null;
+comptime {
+    @export(WebPMultARGBRow, .{ .name = "WebPMultARGBRow" });
+    @export(WebPMultRow, .{ .name = "WebPMultRow" });
+}
+
+/// ARGB packing function: a/r/g/b input is rgba or bgra order.
+pub var WebPPackARGB: ?*const fn (a: [*c]const u8, r: [*c]const u8, g: [*c]const u8, b: [*c]const u8, len: c_int, out: [*c]u32) callconv(.C) void = null;
+/// RGB packing function. `step` can be 3 or 4. r/g/b input is rgb or bgr order.
+pub var WebPPackRGB: ?*const fn (noalias r: [*c]const u8, noalias g: [*c]const u8, noalias b: [*c]const u8, len: c_int, step: c_int, noalias out: [*c]u32) callconv(.C) void = null;
+/// This function returns true if src[i] contains a value different from 0xff.
+pub var WebPHasAlpha8b: ?*const fn (src: [*c]const u8, length: c_int) callconv(.C) c_int = null;
+/// This function returns true if src[4*i] contains a value different from 0xff.
+pub var WebPHasAlpha32b: ?*const fn (src: [*c]const u8, length: c_int) callconv(.C) c_int = null;
+/// replaces transparent values in src[] by `color`.
+pub var WebPAlphaReplace: ?*const fn (src: [*c]u32, length: c_int, color: u32) callconv(.C) void = null;
 
 comptime {
     @export(WebPApplyAlphaMultiply, .{ .name = "WebPApplyAlphaMultiply" });
@@ -403,25 +432,26 @@ extern fn WebPInitAlphaProcessingSSE2() void;
 const WebPInitAlphaProcessingSSE41 = @import("alpha_processing_sse41.zig").WebPInitAlphaProcessingSSE41;
 extern fn WebPInitAlphaProcessingNEON() void;
 
+/// To be called first before using the above.
 pub const WebPInitAlphaProcessing: fn () void = webp.WEBP_DSP_INIT_FUNC(struct {
     pub fn _() void {
-        WebPMultARGBRow = @ptrCast(&WebPMultARGBRow_C);
-        WebPMultRow = @ptrCast(&WebPMultRow_C);
-        WebPApplyAlphaMultiply4444 = @ptrCast(&ApplyAlphaMultiply_16b_C);
+        WebPMultARGBRow = &WebPMultARGBRow_C;
+        WebPMultRow = &WebPMultRow_C;
+        WebPApplyAlphaMultiply4444 = &ApplyAlphaMultiply_16b_C;
         if (comptime big_endian)
-            WebPPackARGB = @ptrCast(&PackARGB_C);
-        WebPPackRGB = @ptrCast(&PackRGB_C);
-        if (!comptime webp.neon_omit_c_code) {
-            WebPApplyAlphaMultiply = @ptrCast(&ApplyAlphaMultiply_C);
-            WebPDispatchAlpha = @ptrCast(&DispatchAlpha_C);
-            WebPDispatchAlphaToGreen = @ptrCast(&DispatchAlphaToGreen_C);
-            WebPExtractAlpha = @ptrCast(&ExtractAlpha_C);
-            WebPExtractGreen = @ptrCast(&ExtractGreen_C);
+            WebPPackARGB = &PackARGB_C;
+        WebPPackRGB = &PackRGB_C;
+        if (comptime !webp.neon_omit_c_code) {
+            WebPApplyAlphaMultiply = &ApplyAlphaMultiply_C;
+            WebPDispatchAlpha = &DispatchAlpha_C;
+            WebPDispatchAlphaToGreen = &DispatchAlphaToGreen_C;
+            WebPExtractAlpha = &ExtractAlpha_C;
+            WebPExtractGreen = &ExtractGreen_C;
         }
 
-        WebPHasAlpha8b = @ptrCast(&HasAlpha8b_C);
-        WebPHasAlpha32b = @ptrCast(&HasAlpha32b_C);
-        WebPAlphaReplace = @ptrCast(&AlphaReplace_C);
+        WebPHasAlpha8b = &HasAlpha8b_C;
+        WebPHasAlpha32b = &HasAlpha32b_C;
+        WebPAlphaReplace = &AlphaReplace_C;
 
         // If defined, use CPUInfo() to overwrite some pointers with faster versions.
         if (VP8GetCPUInfo) |GetCPUInfo| {
