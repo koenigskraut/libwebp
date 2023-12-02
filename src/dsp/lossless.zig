@@ -357,11 +357,6 @@ fn ColorIndexInverseTransform_C(transform: *const webp.VP8LTransform, y_start: c
     }
 }
 
-// COLOR_INDEX_INVERSE(ColorIndexInverseTransform_C, MapARGB_C, static,
-//                     uint32_t, 32b, VP8GetARGBIndex, VP8GetARGBValue)
-// COLOR_INDEX_INVERSE(VP8LColorIndexInverseTransformAlpha, MapAlpha_C, ,
-//                     uint8_t, 8b, VP8GetAlphaIndex, VP8GetAlphaValue)
-
 fn MapAlpha_C(src_: [*c]const u8, color_map: [*c]const u32, dst_: [*c]u8, y_start: c_int, y_end: c_int, width: c_int) callconv(.C) void {
     var src, var dst = .{ src_, dst_ };
     for (@intCast(y_start)..@intCast(y_end)) |_| { // y
@@ -402,47 +397,6 @@ pub export fn VP8LColorIndexInverseTransformAlpha(transform: *const webp.VP8LTra
         VP8LMapColor8b.?(src, color_map, dst, y_start, y_end, @intCast(width));
     }
 }
-
-// #define COLOR_INDEX_INVERSE(FUNC_NAME, F_NAME, STATIC_DECL, TYPE, BIT_SUFFIX,  \
-//                             GET_INDEX, GET_VALUE)                              \
-// static void F_NAME(const TYPE* src, const uint32_t* const color_map,           \
-//                    TYPE* dst, int y_start, int y_end, int width) {             \
-//   int y;                                                                       \
-//   for (y = y_start; y < y_end; ++y) {                                          \
-//     int x;                                                                     \
-//     for (x = 0; x < width; ++x) {                                              \
-//       *dst++ = GET_VALUE(color_map[GET_INDEX(*src++)]);                        \
-//     }                                                                          \
-//   }                                                                            \
-// }                                                                              \
-// STATIC_DECL void FUNC_NAME(const VP8LTransform* const transform,               \
-//                            int y_start, int y_end, const TYPE* src,            \
-//                            TYPE* dst) {                                        \
-//   int y;                                                                       \
-//   const int bits_per_pixel = 8 >> transform->bits_;                            \
-//   const int width = transform->xsize_;                                         \
-//   const uint32_t* const color_map = transform->data_;                          \
-//   if (bits_per_pixel < 8) {                                                    \
-//     const int pixels_per_byte = 1 << transform->bits_;                         \
-//     const int count_mask = pixels_per_byte - 1;                                \
-//     const uint32_t bit_mask = (1 << bits_per_pixel) - 1;                       \
-//     for (y = y_start; y < y_end; ++y) {                                        \
-//       uint32_t packed_pixels = 0;                                              \
-//       int x;                                                                   \
-//       for (x = 0; x < width; ++x) {                                            \
-//         /* We need to load fresh 'packed_pixels' once every                */  \
-//         /* 'pixels_per_byte' increments of x. Fortunately, pixels_per_byte */  \
-//         /* is a power of 2, so can just use a mask for that, instead of    */  \
-//         /* decrementing a counter.                                         */  \
-//         if ((x & count_mask) == 0) packed_pixels = GET_INDEX(*src++);          \
-//         *dst++ = GET_VALUE(color_map[packed_pixels & bit_mask]);               \
-//         packed_pixels >>= bits_per_pixel;                                      \
-//       }                                                                        \
-//     }                                                                          \
-//   } else {                                                                     \
-//     VP8LMapColor##BIT_SUFFIX(src, color_map, dst, y_start, y_end, width);      \
-//   }                                                                            \
-// }
 
 pub export fn VP8LInverseTransform(transform: *const webp.VP8LTransform, row_start: c_int, row_end: c_int, in: [*c]const u32, out: [*c]u32) void {
     const width: u32 = @intCast(transform.xsize_);

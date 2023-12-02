@@ -398,8 +398,7 @@ pub inline fn VP8GetSigned(noalias br: *VP8BitReader, v: c_int, label: [*c]const
     }
 }
 
-// static WEBP_INLINE
-pub fn VP8GetBitAlt(noalias br: *VP8BitReader, prob: u32, label: [*c]const u8) bool {
+pub inline fn VP8GetBitAlt(noalias br: *VP8BitReader, prob: u32, label: [*c]const u8) bool {
     _ = label;
 
     // Don't move this declaration! It makes a big speed difference to store
