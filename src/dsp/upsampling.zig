@@ -198,7 +198,6 @@ comptime {
     @export(WebPYUV444Converters, .{ .name = "WebPYUV444Converters" });
 }
 
-extern var VP8GetCPUInfo: webp.VP8CPUInfo;
 extern fn WebPInitYUV444ConvertersMIPSdspR2() callconv(.C) void;
 extern fn WebPInitYUV444ConvertersSSE2() callconv(.C) void;
 extern fn WebPInitYUV444ConvertersSSE41() callconv(.C) void;
@@ -218,7 +217,7 @@ pub const WebPInitYUV444Converters = webp.WEBP_DSP_INIT_FUNC(struct {
         WebPYUV444Converters[@intFromEnum(CspMode.Argb)] = &WebPYuv444ToArgb_C;
         WebPYUV444Converters[@intFromEnum(CspMode.rgbA_4444)] = &WebPYuv444ToRgba4444_C;
 
-        if (VP8GetCPUInfo) |getCpuInfo| {
+        if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
                 if (getCpuInfo(.kSSE2) != 0) WebPInitYUV444ConvertersSSE2();
             }
@@ -268,7 +267,7 @@ pub const WebPInitUpsamplers = webp.WEBP_DSP_INIT_FUNC(struct {
         }
 
         // If defined, use CPUInfo() to overwrite some pointers with faster versions.
-        if (VP8GetCPUInfo) |getCpuInfo| {
+        if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
                 if (getCpuInfo(.kSSE2) != 0) WebPInitUpsamplersSSE2();
             }
@@ -284,7 +283,7 @@ pub const WebPInitUpsamplers = webp.WEBP_DSP_INIT_FUNC(struct {
         }
 
         if (comptime webp.have_neon) {
-            if (webp.neon_omit_c_code or (if (VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false))
+            if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false))
                 WebPInitUpsamplersNEON();
         }
 

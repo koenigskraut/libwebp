@@ -178,7 +178,6 @@ comptime {
     @export(WebPSamplers, .{ .name = "WebPSamplers" });
 }
 
-extern var VP8GetCPUInfo: webp.VP8CPUInfo;
 extern fn WebPInitSamplersSSE2() callconv(.C) void;
 extern fn WebPInitSamplersSSE41() callconv(.C) void;
 extern fn WebPInitSamplersMIPS32() callconv(.C) void;
@@ -200,7 +199,7 @@ pub const WebPInitSamplers = webp.WEBP_DSP_INIT_FUNC(struct {
         WebPSamplers[@intFromEnum(webp.ColorspaceMode.rgbA_4444)] = &YuvToRgba4444Row;
 
         // If defined, use CPUInfo() to overwrite some pointers with faster versions.
-        if (VP8GetCPUInfo) |getCpuInfo| {
+        if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
                 // if (getCpuInfo(.kSSE2)) WebPInitSamplersSSE2();
             }
@@ -379,7 +378,7 @@ pub const WebPInitConvertARGBToYUV = webp.WEBP_DSP_INIT_FUNC(struct {
 
         WebPConvertRGBA32ToUV = &WebPConvertRGBA32ToUV_C;
 
-        if (VP8GetCPUInfo) |getCpuInfo| {
+        if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
                 if (getCpuInfo(.kSSE2) != 0) {
                     // WebPInitConvertARGBToYUVSSE2();
@@ -393,7 +392,7 @@ pub const WebPInitConvertARGBToYUV = webp.WEBP_DSP_INIT_FUNC(struct {
         }
 
         if (comptime webp.have_neon) {
-            if (webp.neon_omit_c_code or (if (VP8GetCPUInfo) |getCpuInfo| getCpuInfo(.kNEON) != 0 else false)) {
+            if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getCpuInfo| getCpuInfo(.kNEON) != 0 else false)) {
                 WebPInitConvertARGBToYUVNEON();
             }
         }

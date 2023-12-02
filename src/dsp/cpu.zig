@@ -48,23 +48,6 @@ pub const neon_omit_c_code = use_neon and dsp_omit_c_code;
 
 //------------------------------------------------------------------------------
 
-// This macro prevents thread_sanitizer from reporting known concurrent writes.
-// #define WEBP_TSAN_IGNORE_FUNCTION
-// #if defined(__has_feature)
-//     #if __has_feature(thread_sanitizer)
-//         #undef WEBP_TSAN_IGNORE_FUNCTION
-//         #define WEBP_TSAN_IGNORE_FUNCTION __attribute__((no_sanitize_thread))
-//     #endif
-// #endif
-
-// #if defined(__has_feature)
-//     #if __has_feature(memory_sanitizer)
-//         #define WEBP_MSAN
-//     #endif
-// #endif
-
-// pub extern var VP8GetCPUInfo: VP8CPUInfo;
-
 pub fn WEBP_DSP_INIT_FUNC(comptime func: fn () void) fn () void {
     return struct {
         pub fn _() void {
@@ -75,65 +58,6 @@ pub fn WEBP_DSP_INIT_FUNC(comptime func: fn () void) fn () void {
         }
     }._;
 }
-
-// pub fn WEBP_DSP_INIT_FUNC(comptime func: fn () void) fn () void {
-//     return struct {
-//         pub fn _() void {
-//             const S = struct {
-//                 pub const body: fn () void = func;
-//                 pub var last_cpuinfo_used: VP8CPUInfo = null;
-//             };
-//             if (comptime (build_options.WEBP_USE_THREAD and builtin.os.tag != .windows and false)) {
-//                 var lock: std.c.pthread_mutex_t = std.c.PTHREAD_MUTEX_INITIALIZER;
-//                 if (std.c.pthread_mutex_lock(&lock) != .SUCCESS) return;
-//                 defer _ = std.c.pthread_mutex_unlock(&lock);
-//                 if (S.last_cpuinfo_used != VP8GetCPUInfo) S.body();
-//                 S.last_cpuinfo_used = VP8GetCPUInfo;
-//             } else {
-//                 if (S.last_cpuinfo_used == VP8GetCPUInfo) return;
-//                 S.body();
-//                 S.last_cpuinfo_used = VP8GetCPUInfo;
-//             }
-//         }
-//     }._;
-// }
-
-// #define WEBP_UBSAN_IGNORE_UNDEF
-// #define WEBP_UBSAN_IGNORE_UNSIGNED_OVERFLOW
-// #if defined(__clang__) && defined(__has_attribute)
-// #if __has_attribute(no_sanitize)
-// // This macro prevents the undefined behavior sanitizer from reporting
-// // failures. This is only meant to silence unaligned loads on platforms that
-// // are known to support them.
-// #undef WEBP_UBSAN_IGNORE_UNDEF
-// #define WEBP_UBSAN_IGNORE_UNDEF __attribute__((no_sanitize("undefined")))
-
-// // This macro prevents the undefined behavior sanitizer from reporting
-// // failures related to unsigned integer overflows. This is only meant to
-// // silence cases where this well defined behavior is expected.
-// #undef WEBP_UBSAN_IGNORE_UNSIGNED_OVERFLOW
-// #define WEBP_UBSAN_IGNORE_UNSIGNED_OVERFLOW \
-//   __attribute__((no_sanitize("unsigned-integer-overflow")))
-// #endif
-// #endif
-
-// // If 'ptr' is NULL, returns NULL. Otherwise returns 'ptr + off'.
-// // Prevents undefined behavior sanitizer nullptr-with-nonzero-offset warning.
-// #if !defined(WEBP_OFFSET_PTR)
-// #define WEBP_OFFSET_PTR(ptr, off) (((ptr) == NULL) ? NULL : ((ptr) + (off)))
-// #endif
-
-// // Regularize the definition of WEBP_SWAP_16BIT_CSP (backward compatibility)
-// #if !defined(WEBP_SWAP_16BIT_CSP)
-// #define WEBP_SWAP_16BIT_CSP 0
-// #endif
-
-// // some endian fix (e.g.: mips-gcc doesn't define __BIG_ENDIAN__)
-// #if !defined(WORDS_BIGENDIAN) &&                   \
-//     (defined(__BIG_ENDIAN__) || defined(_M_PPC) || \
-//      (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)))
-// #define WORDS_BIGENDIAN
-// #endif
 
 pub const CPUFeature = enum(c_uint) {
     kSSE2,
@@ -151,3 +75,216 @@ pub const CPUFeature = enum(c_uint) {
 // returns true if the CPU supports the feature.
 pub const VP8CPUInfo = ?*const fn (CPUFeature) callconv(.C) c_bool;
 pub const VP8CPUInfoBody = fn (CPUFeature) callconv(.C) c_int;
+
+//------------------------------------------------------------------------------
+// SSE2 detection.
+//
+
+inline fn GetCPUInfo(cpu_info: [*]i32, info_type: i32) void {
+    var a, var b, var c, var d = .{@as(i32, 0)} ** 4;
+    const fpic = comptime builtin.position_independent_code or builtin.position_independent_executable;
+    if (comptime fpic and builtin.cpu.arch.isX86() and !webp.have_x86_feat(builtin.cpu, .@"64bit")) {
+        // pic and i386
+        asm volatile (
+            \\mov %edi, %ebx
+            \\cpuid
+            \\xchg %edi, %ebx
+            : [a] "={eax}" (a),
+              [b] "={edi}" (b),
+              [c] "={ecx}" (c),
+              [d] "={edx}" (d),
+            : [info_type] "{eax}" (info_type),
+              [zero] "{ecx}" (0),
+            : "ebx", "edi"
+        );
+    } else if (comptime webp.have_x86_feat(builtin.cpu, .@"64bit") and fpic and
+        (builtin.code_model == .medium or builtin.code_model == .large))
+    {
+        // x86_64 and (code_model == .medium or .large) and fpic
+        asm volatile (
+            \\ xchg %rbx, %%rsi
+            \\ cpuid
+            \\ xchg %rbx, %%rsi
+            : [a] "={eax}" (a),
+              [b] "=&r" (b),
+              [c] "={ecx}" (c),
+              [d] "={edx}" (d),
+            : [info_type] "{eax}" (info_type),
+              [zero] "{ecx}" (0),
+        );
+    } else if (comptime builtin.cpu.arch.isX86()) {
+        // else (if x86)
+        asm volatile (
+            \\ cpuid
+            : [a] "={eax}" (a),
+              [b] "={ebx}" (b),
+              [c] "={ecx}" (c),
+              [d] "={edx}" (d),
+            : [info_type] "{eax}" (info_type),
+              [zero] "{ecx}" (0),
+        );
+    }
+    cpu_info[0] = a;
+    cpu_info[1] = b;
+    cpu_info[2] = c;
+    cpu_info[3] = d;
+}
+
+inline fn xgetbv() u64 {
+    // NaCl has no support for xgetbv or the raw opcode.
+    if (comptime !builtin.cpu.arch.isX86() or builtin.target.os.tag == .nacl) return 0;
+
+    const ecx: u32 = 0;
+    var eax: u32, var edx: u32 = .{ 0, 0 };
+    // Use the raw opcode for xgetbv for compatibility with older toolchains.
+    asm volatile (
+        \\ .byte 0x0f, 0x01, 0xd0
+        : [a] "={eax}" (eax),
+          [d] "={edx}" (edx),
+        : [ecx] "{ecx}" (ecx),
+    );
+    return (@as(u64, edx) << 32) | @as(u64, eax);
+}
+
+// helper function for run-time detection of slow SSSE3 platforms
+fn CheckSlowModel(info: u32) bool {
+    // Table listing display models with longer latencies for the bsr instruction
+    // (ie 2 cycles vs 10/16 cycles) and some SSSE3 instructions like pshufb.
+    // Refer to Intel 64 and IA-32 Architectures Optimization Reference Manual.
+    const kSlowModels = [_]u8{
+        0x37, 0x4a, 0x4d, // Silvermont Microarchitecture
+        0x1c, 0x26, 0x27, // Atom Microarchitecture
+    };
+    const model: u32 = ((info & 0xf0000) >> 12) | ((info >> 4) & 0xf);
+    const family: u32 = (info >> 8) & 0xf;
+    if (family == 0x06) {
+        for (kSlowModels) |slow_model|
+            if (model == slow_model) return true;
+    }
+    return false;
+}
+
+fn x86CPUInfo(feature: CPUFeature) callconv(.C) c_bool {
+    var cpu_info: [4]i32 = undefined;
+    var is_intel = false;
+
+    // get the highest feature value cpuid supports
+    GetCPUInfo(&cpu_info, 0);
+    const max_cpuid_value = cpu_info[0];
+    if (max_cpuid_value < 1) {
+        return 0;
+    } else {
+        const VENDOR_ID_INTEL_EBX: i32 = @bitCast(@as(u32, 0x756e6547)); // uneG
+        const VENDOR_ID_INTEL_EDX: i32 = @bitCast(@as(u32, 0x49656e69)); // Ieni
+        const VENDOR_ID_INTEL_ECX: i32 = @bitCast(@as(u32, 0x6c65746e)); // letn
+        is_intel = (cpu_info[1] == VENDOR_ID_INTEL_EBX and
+            cpu_info[2] == VENDOR_ID_INTEL_ECX and
+            cpu_info[3] == VENDOR_ID_INTEL_EDX); // genuine Intel?
+    }
+
+    GetCPUInfo(&cpu_info, 1);
+    if (feature == .kSSE2) {
+        return @intFromBool(cpu_info[3] & (@as(i32, 1) << 26) != 0);
+    }
+    if (feature == .kSSE3) {
+        return @intFromBool(cpu_info[2] & (@as(i32, 1) << 0) != 0);
+    }
+    if (feature == .kSlowSSSE3) {
+        if (is_intel and (cpu_info[2] & (@as(i32, 1) << 9) != 0)) { // SSSE3?
+            return @intFromBool(CheckSlowModel(@bitCast(cpu_info[0])));
+        }
+        return 0;
+    }
+
+    if (feature == .kSSE4_1) {
+        return @intFromBool(cpu_info[2] & (@as(i32, 1) << 19) != 0);
+    }
+    if (feature == .kAVX) {
+        // bits 27 (OSXSAVE) & 28 (256-bit AVX)
+        if ((cpu_info[2] & 0x18000000) == 0x18000000) {
+            // XMM state and YMM state enabled by the OS.
+            return @intFromBool((xgetbv() & 0x6) == 0x6);
+        }
+    }
+    if (feature == .kAVX2) {
+        if (x86CPUInfo(.kAVX) != 0 and max_cpuid_value >= 7) {
+            GetCPUInfo(&cpu_info, 7);
+            return @intFromBool(cpu_info[1] & (@as(i32, 1) << 5) != 0);
+        }
+    }
+    return 0;
+}
+
+fn AndroidCPUInfo(feature: CPUFeature) callconv(.C) c_bool {
+    // const AndroidCpuFamily cpu_family = android_getCpuFamily();
+    // const uint64_t cpu_features = android_getCpuFeatures();
+    if (feature == .kNEON) {
+        return @intFromBool(webp.have_aarch64_feat(builtin.cpu, .neon) or webp.have_arm_feat(builtin.cpu, .neon));
+        // return cpu_family == ANDROID_CPU_FAMILY_ARM &&
+        //     (cpu_features & ANDROID_CPU_ARM_FEATURE_NEON) != 0;
+    }
+    return 0;
+}
+
+// Use compile flags as an indicator of SIMD support instead of a runtime check.
+fn wasmCPUInfo(feature: CPUFeature) callconv(.C) c_bool {
+    return @intFromBool(switch (feature) {
+        .kSSE2 => have_sse2,
+        .kSSE3 => have_sse41,
+        .kSlowSSSE3 => have_sse41,
+        .kSSE4_1 => have_sse41,
+        .kNEON => have_neon,
+        else => false,
+    });
+}
+
+// In most cases this function doesn't check for NEON support (it's assumed by
+// the configuration), but enables turning off NEON at runtime, for testing
+// purposes, by setting VP8GetCPUInfo = NULL.
+fn armCPUInfo(feature: CPUFeature) callconv(.C) c_bool {
+    if (feature != .kNEON) return 0;
+    if (comptime builtin.os.tag == .linux and have_neon) {
+        var has_neon = false;
+        var line: [200]u8 = undefined;
+        var cpuinfo = std.fs.openFileAbsolute("/proc/cpuinfo", .{}) catch return 0;
+        defer cpuinfo.close();
+        const reader = cpuinfo.reader();
+
+        while (reader.readUntilDelimiterOrEof(&line, '\n') catch null) |l| {
+            if (std.mem.eql(u8, l[0..8], "Features")) {
+                if (std.mem.indexOfPos(u8, line, " neon ") != null) {
+                    has_neon = true;
+                    break;
+                }
+            }
+        }
+        return @intFromBool(has_neon);
+    } else {
+        return 1;
+    }
+}
+
+fn mipsCPUInfo(feature: CPUFeature) callconv(.C) c_bool {
+    if ((feature == .kMIPS32) or (feature == .kMIPSdspR2) or (feature == .kMSA)) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+pub var VP8GetCPUInfo: VP8CPUInfo = if (builtin.cpu.arch.isX86())
+    &x86CPUInfo
+else if (android_neon)
+    &AndroidCPUInfo
+else if (builtin.os.tag == .emscripten)
+    &wasmCPUInfo
+else if (have_neon)
+    &armCPUInfo
+else if (use_mips32 or use_mips_dsp_r2 or use_msa)
+    &mipsCPUInfo
+else
+    null;
+
+comptime {
+    @export(VP8GetCPUInfo, .{ .name = "VP8GetCPUInfo" });
+}

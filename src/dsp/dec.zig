@@ -841,7 +841,6 @@ fn DitherCombine8x8_C(dither_: [*c]const u8, dst_: [*c]u8, dst_stride: c_int) ca
 
 //------------------------------------------------------------------------------
 
-extern var VP8GetCPUInfo: webp.VP8CPUInfo;
 extern fn VP8DspInitSSE2() void;
 const VP8DspInitSSE41 = @import("dec_sse41.zig").VP8DspInitSSE41;
 extern fn VP8DspInitNEON() void;
@@ -916,7 +915,7 @@ pub const VP8DspInit = webp.WEBP_DSP_INIT_FUNC(struct {
         VP8DitherCombine8x8 = @ptrCast(&DitherCombine8x8_C);
 
         // If defined, use CPUInfo() to overwrite some pointers with faster versions.
-        if (VP8GetCPUInfo) |getCpuInfo| {
+        if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
                 if (getCpuInfo(.kSSE2) != 0) {
                     VP8DspInitSSE2();
@@ -937,7 +936,7 @@ pub const VP8DspInit = webp.WEBP_DSP_INIT_FUNC(struct {
         }
 
         if (comptime webp.have_neon) {
-            if (comptime (webp.neon_omit_c_code or (if (VP8GetCPUInfo) |getCpuInfo| getCpuInfo(.kNEON) != 0 else false))) {
+            if (comptime (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getCpuInfo| getCpuInfo(.kNEON) != 0 else false))) {
                 VP8DspInitNEON();
             }
         }

@@ -882,14 +882,12 @@ fn GetCoeffsAlt(br: *webp.VP8BitReader, prob: [*c]const [*c]const VP8BandProbas,
     return 16;
 }
 
-extern var VP8GetCPUInfo: webp.VP8CPUInfo;
-
 const GetCoeffsFunc = ?*const fn (br: [*c]webp.VP8BitReader, prob: [*c]const [*c]const VP8BandProbas, ctx: c_int, dq: *const quant_t, n: c_int, out: [*c]i16) callconv(.C) c_int;
 var GetCoeffs: GetCoeffsFunc = null;
 
 const InitGetCoeffs: fn () void = webp.WEBP_DSP_INIT_FUNC(struct {
     pub fn _() void {
-        if (VP8GetCPUInfo != null and VP8GetCPUInfo.?(.kSlowSSSE3) != 0) {
+        if (webp.VP8GetCPUInfo != null and webp.VP8GetCPUInfo.?(.kSlowSSSE3) != 0) {
             GetCoeffs = @ptrCast(&GetCoeffsAlt);
         } else {
             GetCoeffs = @ptrCast(&GetCoeffsFast);

@@ -426,7 +426,6 @@ comptime {
 //------------------------------------------------------------------------------
 // Init function
 
-extern var VP8GetCPUInfo: webp.VP8CPUInfo;
 extern fn WebPInitAlphaProcessingMIPSdspR2() void;
 extern fn WebPInitAlphaProcessingSSE2() void;
 const WebPInitAlphaProcessingSSE41 = @import("alpha_processing_sse41.zig").WebPInitAlphaProcessingSSE41;
@@ -454,7 +453,7 @@ pub const WebPInitAlphaProcessing: fn () void = webp.WEBP_DSP_INIT_FUNC(struct {
         WebPAlphaReplace = &AlphaReplace_C;
 
         // If defined, use CPUInfo() to overwrite some pointers with faster versions.
-        if (VP8GetCPUInfo) |GetCPUInfo| {
+        if (webp.VP8GetCPUInfo) |GetCPUInfo| {
             if (comptime webp.have_sse2) {
                 if (GetCPUInfo(.kSSE2) != 0) {
                     WebPInitAlphaProcessingSSE2();
@@ -473,7 +472,7 @@ pub const WebPInitAlphaProcessing: fn () void = webp.WEBP_DSP_INIT_FUNC(struct {
         }
 
         if (comptime webp.have_neon) {
-            if (webp.neon_omit_c_code or (if (VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false)) {
+            if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false)) {
                 WebPInitAlphaProcessingNEON();
             }
         }

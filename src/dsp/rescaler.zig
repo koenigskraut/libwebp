@@ -204,7 +204,6 @@ comptime {
     @export(WebPRescalerExportRowShrink, .{ .name = "WebPRescalerExportRowShrink" });
 }
 
-extern var VP8GetCPUInfo: webp.VP8CPUInfo;
 extern fn WebPRescalerDspInitSSE2() callconv(.C) void;
 extern fn WebPRescalerDspInitMIPS32() callconv(.C) void;
 extern fn WebPRescalerDspInitMIPSdspR2() callconv(.C) void;
@@ -222,7 +221,7 @@ pub const WebPRescalerDspInit = webp.WEBP_DSP_INIT_FUNC(struct {
         WebPRescalerImportRowExpand = &WebPRescalerImportRowExpand_C;
         WebPRescalerImportRowShrink = &WebPRescalerImportRowShrink_C;
 
-        if (VP8GetCPUInfo) |getCpuInfo| {
+        if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
                 if (getCpuInfo(.kSSE2) != 0) WebPRescalerDspInitSSE2();
             }
@@ -238,7 +237,7 @@ pub const WebPRescalerDspInit = webp.WEBP_DSP_INIT_FUNC(struct {
         }
 
         if (comptime webp.have_neon) {
-            if (webp.neon_omit_c_code or (if (VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false))
+            if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false))
                 WebPRescalerDspInitNEON();
         }
 

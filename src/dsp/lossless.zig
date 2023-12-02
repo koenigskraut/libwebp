@@ -641,7 +641,6 @@ comptime {
     @export(VP8LMapColor8b, .{ .name = "VP8LMapColor8b" });
 }
 
-extern var VP8GetCPUInfo: webp.VP8CPUInfo;
 extern fn VP8LDspInitSSE2() callconv(.C) void;
 extern fn VP8LDspInitSSE41() callconv(.C) void;
 extern fn VP8LDspInitNEON() callconv(.C) void;
@@ -690,7 +689,7 @@ pub const VP8LDspInit = webp.WEBP_DSP_INIT_FUNC(struct {
         VP8LMapColor8b = &MapAlpha_C;
 
         // If defined, use CPUInfo() to overwrite some pointers with faster versions.
-        if (VP8GetCPUInfo) |getCpuInfo| {
+        if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
                 if (getCpuInfo(.kSSE2) != 0) {
                     // VP8LDspInitSSE2();
@@ -708,7 +707,7 @@ pub const VP8LDspInit = webp.WEBP_DSP_INIT_FUNC(struct {
         }
 
         if (comptime webp.have_neon) {
-            if (webp.neon_omit_c_code or (if (VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false))
+            if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false))
                 VP8LDspInitNEON();
         }
 
