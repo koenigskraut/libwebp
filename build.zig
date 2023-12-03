@@ -10,6 +10,7 @@ pub fn build(b: *std.Build) !void {
     const dsp_omit_c_code = b.option(bool, "dsp-omit-c-code", "") orelse true;
     const use_static_tables = b.option(bool, "use-static-tables", "") orelse true;
     const reduce_csp = b.option(bool, "reduce-csp", "") orelse false;
+    const max_allocable_memory = b.option(usize, "max-allocable-memory", "") orelse 0;
 
     const options = b.addOptions();
     options.addOption(bool, "reduce_size", reduce_size);
@@ -19,6 +20,7 @@ pub fn build(b: *std.Build) !void {
     options.addOption(bool, "dsp_omit_c_code", dsp_omit_c_code);
     options.addOption(bool, "use_static_tables", use_static_tables);
     options.addOption(bool, "reduce_csp", reduce_csp);
+    options.addOption(usize, "max_allocable_memory", max_allocable_memory);
 
     const lib = b.addStaticLibrary(.{
         .name = "webp",
@@ -312,7 +314,7 @@ const utils_dec_srsc: StrSlice = &.{
     // "src/utils/random_utils.c",
     // "src/utils/rescaler_utils.c",
     // "src/utils/thread_utils.c",
-    "src/utils/utils.c",
+    // "src/utils/utils.c",
 };
 
 const utils_enc_srcs: StrSlice = &.{
