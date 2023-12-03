@@ -204,17 +204,17 @@ pub const VP8TopSamples = extern struct {
 // VP8Decoder: the main opaque structure handed over to user
 
 /// Main decoding object. This is an opaque structure.
-pub const VP8Decoder = extern struct {
+pub const VP8Decoder = struct {
     status_: webp.VP8Status,
     /// true if ready to decode a picture with VP8Decode()
-    ready_: c_bool,
+    ready_: bool,
     /// set when status_ is not OK.
     error_msg_: ?[*]const u8,
 
     // Main data source
     br_: webp.VP8BitReader,
     /// if true, incremental decoding is expected
-    incremental_: c_bool,
+    incremental_: bool,
 
     // headers
     frm_hdr_: VP8FrameHeader,
@@ -309,11 +309,11 @@ pub const VP8Decoder = extern struct {
     alpha_data_: [*c]const u8,
     alpha_data_size_: usize,
     /// true if alpha_data_ is decoded in alpha_plane_
-    is_alpha_decoded_: c_bool,
+    is_alpha_decoded_: bool,
     /// memory allocated for alpha_plane_
-    alpha_plane_mem_: [*c]u8,
+    alpha_plane_mem_: ?[]u8,
     /// output. Persistent, contains the whole data.
-    alpha_plane_: [*c]u8,
+    alpha_plane_: ?[]u8,
     /// last decoded alpha row (or NULL)
     alpha_prev_line_: [*c]const u8,
     /// derived from decoding options (0=off, 100=full)
@@ -348,7 +348,7 @@ pub export fn VP8Clear(dec_arg: ?*VP8Decoder) void {
     dec.mem_ = null;
     dec.mem_size_ = 0;
     dec.br_ = std.mem.zeroes(@TypeOf(dec.br_));
-    dec.ready_ = 0;
+    dec.ready_ = false;
 }
 
 // Destroy the decoder object.
@@ -361,12 +361,12 @@ pub export fn VP8Delete(dec: ?*VP8Decoder) void {
 
 pub export fn VP8SetError(dec: *VP8Decoder, @"error": webp.VP8Status, msg: [*c]const u8) c_bool {
     // VP8Status.Suspended is only meaningful in incremental decoding.
-    assert(dec.incremental_ != 0 or @"error" != .Suspended);
+    assert(dec.incremental_ or @"error" != .Suspended);
     // The oldest error reported takes precedence over the new one.
     if (dec.status_ == .Ok) {
         dec.status_ = @"error";
         dec.error_msg_ = msg;
-        dec.ready_ = 0;
+        dec.ready_ = false;
     }
     return 0;
 }
@@ -487,7 +487,7 @@ pub fn VP8New() ?*VP8Decoder {
     if (dec_) |dec| {
         SetOk(dec);
         webp.WebPGetWorkerInterface().Init.?(&dec.worker_);
-        dec.ready_ = 0;
+        dec.ready_ = false;
         dec.num_parts_minus_one_ = 0;
         InitGetCoeffs();
     }
@@ -636,7 +636,7 @@ fn ParsePartitions(dec: *VP8Decoder, buf: [*c]const u8, size: usize) webp.VP8Err
     }
     webp.VP8InitBitReader(&dec.parts_[last_part], part_start, size_left);
     if (part_start < buf_end) return;
-    return if (dec.incremental_ != 0)
+    return if (dec.incremental_)
         error.Suspended // Init is ok, but there's not enough data
     else
         error.NotEnoughData;
@@ -772,7 +772,7 @@ pub fn VP8GetHeaders(dec_arg: ?*VP8Decoder, io_arg: ?*VP8Io) c_bool {
     webp.VP8ParseProba(br, dec);
 
     // sanitized state
-    dec.ready_ = 1;
+    dec.ready_ = true;
     return 1;
 }
 
@@ -1063,10 +1063,10 @@ pub fn VP8Decode(dec_arg: ?*VP8Decoder, io_arg: ?*VP8Io) c_int {
     const dec = dec_arg orelse return 0;
     const io = io_arg orelse return VP8SetError(dec, .InvalidParam, "NULL VP8Io parameter in VP8Decode().");
 
-    if (dec.ready_ == 0) {
+    if (!dec.ready_) {
         if (VP8GetHeaders(dec, io) == 0) return 0;
     }
-    assert(dec.ready_ != 0);
+    assert(dec.ready_);
 
     // Finish setting up the decoding parameter. Will call io->setup().
     ok = @intFromBool(webp.VP8EnterCritical(dec, io) == .Ok);
@@ -1086,6 +1086,6 @@ pub fn VP8Decode(dec_arg: ?*VP8Decoder, io_arg: ?*VP8Io) c_int {
         return 0;
     }
 
-    dec.ready_ = 0;
+    dec.ready_ = false;
     return ok;
 }

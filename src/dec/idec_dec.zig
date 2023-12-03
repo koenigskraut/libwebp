@@ -122,7 +122,7 @@ fn NeedCompressedAlpha(idec: *const IDecoder) c_bool {
     } else {
         // Must be not null as idec.state_ != .WEBP_HEADER.
         const dec: *const webp.VP8Decoder = @ptrCast(@alignCast(idec.dec_.?));
-        return @intFromBool((dec.alpha_data_ != null) and !(dec.is_alpha_decoded_ != 0));
+        return @intFromBool((dec.alpha_data_ != null) and !dec.is_alpha_decoded_);
     }
 }
 
@@ -330,7 +330,7 @@ fn DecodeWebPHeaders(idec: *IDecoder) VP8Status {
     idec.is_lossless_ = headers.is_lossless;
     if (!(idec.is_lossless_ != 0)) {
         const dec = webp.VP8New() orelse return .OutOfMemory;
-        dec.incremental_ = 1;
+        dec.incremental_ = true;
         idec.dec_ = dec;
         dec.alpha_data_ = headers.alpha_data;
         dec.alpha_data_size_ = headers.alpha_data_size;
@@ -445,7 +445,7 @@ fn DecodeRemaining(idec: *IDecoder) VP8Status {
     const io = &idec.io_;
 
     // Make sure partition #0 has been read before, to set dec to ready_.
-    if (!(dec.ready_ != 0)) return IDecError(idec, .BitstreamError);
+    if (!dec.ready_) return IDecError(idec, .BitstreamError);
 
     while (dec.mb_y_ < dec.mb_h_) : (dec.mb_y_ += 1) {
         if (idec.last_mb_y_ != dec.mb_y_) {
@@ -494,7 +494,7 @@ fn DecodeRemaining(idec: *IDecoder) VP8Status {
         idec.state_ = .ERROR; // prevent re-entry in IDecError
         return IDecError(idec, .UserAbort);
     }
-    dec.ready_ = 0;
+    dec.ready_ = false;
     return FinishDecoding(idec);
 }
 

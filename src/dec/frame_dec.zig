@@ -740,7 +740,7 @@ fn AllocateMemory(dec: *webp.VP8Decoder) bool {
     mem += cache_size;
 
     // alpha plane
-    dec.alpha_plane_ = if (alpha_size != 0) mem else null;
+    dec.alpha_plane_ = if (alpha_size != 0) mem[0..alpha_size] else null;
     mem += alpha_size;
     assert(@intFromPtr(mem) <= @intFromPtr(dec.mem_) + dec.mem_size_);
 

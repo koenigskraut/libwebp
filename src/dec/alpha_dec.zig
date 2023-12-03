@@ -114,7 +114,7 @@ fn ALPHDecode(dec: *webp.VP8Decoder, row: c_int, num_rows: c_int) bool {
     if (alph_dec.method_ == webp.ALPHA_NO_COMPRESSION) {
         var prev_line = dec.alpha_prev_line_;
         var deltas = dec.alpha_data_ + webp.ALPHA_HEADER_LEN + @abs(row * width);
-        var dst = dec.alpha_plane_ + @abs(row * width);
+        var dst = dec.alpha_plane_.?.ptr + @abs(row * width);
         assert(deltas <= &dec.alpha_data_[dec.alpha_data_size_]);
         assert(webp.WebPUnfilters[@intFromEnum(alph_dec.filter_)] != null);
         // var y: usize = 0;
@@ -133,7 +133,7 @@ fn ALPHDecode(dec: *webp.VP8Decoder, row: c_int, num_rows: c_int) bool {
     }
 
     if (row + num_rows >= height) {
-        dec.is_alpha_decoded_ = 1;
+        dec.is_alpha_decoded_ = true;
     }
     return true;
 }
@@ -143,7 +143,10 @@ fn AllocateAlphaPlane(dec: *webp.VP8Decoder, io: *const webp.VP8Io) bool {
     const height = io.crop_bottom;
     const alpha_size: u64 = @intCast(stride * height);
     assert(dec.alpha_plane_mem_ == null);
-    dec.alpha_plane_mem_ = @ptrCast(webp.WebPSafeMalloc(alpha_size, @sizeOf(u8)));
+    dec.alpha_plane_mem_ = if (webp.WebPSafeMalloc(alpha_size, @sizeOf(u8))) |ptr|
+        @as([*]u8, @ptrCast(ptr))[0..alpha_size]
+    else
+        null;
     if (dec.alpha_plane_mem_ == null) {
         return webp.VP8SetError(dec, .OutOfMemory, "Alpha decoder initialization failed.") != 0;
     }
@@ -154,7 +157,7 @@ fn AllocateAlphaPlane(dec: *webp.VP8Decoder, io: *const webp.VP8Io) bool {
 
 /// Deallocate memory associated to dec->alpha_plane_ decoding
 pub fn WebPDeallocateAlphaMemory(dec: *webp.VP8Decoder) void {
-    webp.WebPSafeFree(dec.alpha_plane_mem_);
+    webp.WebPSafeFree(if (dec.alpha_plane_mem_) |slice| slice.ptr else null);
     dec.alpha_plane_mem_ = null;
     dec.alpha_plane_ = null;
     ALPHDelete(dec.alph_dec_);
@@ -170,7 +173,7 @@ pub fn VP8DecompressAlphaRows(dec: *webp.VP8Decoder, io: *const webp.VP8Io, row:
         return null;
     }
 
-    if (dec.is_alpha_decoded_ == 0) {
+    if (!dec.is_alpha_decoded_) {
         if (dec.alph_dec_ == null) { // Initialize decoder.
             dec.alph_dec_ = @ptrCast(ALPHNew() orelse {
                 _ = webp.VP8SetError(dec, .OutOfMemory, "Alpha decoder initialization failed.");
@@ -180,7 +183,7 @@ pub fn VP8DecompressAlphaRows(dec: *webp.VP8Decoder, io: *const webp.VP8Io, row:
                 WebPDeallocateAlphaMemory(dec);
                 return null;
             }
-            if (!ALPHInit(dec.alph_dec_.?, dec.alpha_data_[0..dec.alpha_data_size_], io, dec.alpha_plane_)) {
+            if (!ALPHInit(dec.alph_dec_.?, dec.alpha_data_[0..dec.alpha_data_size_], io, dec.alpha_plane_.?.ptr)) {
                 const vp8l_dec = dec.alph_dec_.?.vp8l_dec_;
                 _ = webp.VP8SetError(dec, if (vp8l_dec) |ptr| ptr.status_ else .OutOfMemory, "Alpha decoder initialization failed.");
                 {
@@ -203,11 +206,11 @@ pub fn VP8DecompressAlphaRows(dec: *webp.VP8Decoder, io: *const webp.VP8Io, row:
             return null;
         }
 
-        if (dec.is_alpha_decoded_ != 0) { // finished?
+        if (dec.is_alpha_decoded_) { // finished?
             ALPHDelete(dec.alph_dec_);
             dec.alph_dec_ = null;
             if (dec.alpha_dithering_ > 0) {
-                const alpha: [*c]u8 = dec.alpha_plane_ + @abs(io.crop_top * width + io.crop_left);
+                const alpha: [*c]u8 = dec.alpha_plane_.?.ptr + @abs(io.crop_top * width + io.crop_left);
                 if (webp.WebPDequantizeLevels(alpha, io.crop_right - io.crop_left, io.crop_bottom - io.crop_top, width, dec.alpha_dithering_) == 0) {
                     WebPDeallocateAlphaMemory(dec);
                     return null;
@@ -217,5 +220,5 @@ pub fn VP8DecompressAlphaRows(dec: *webp.VP8Decoder, io: *const webp.VP8Io, row:
     }
 
     // Return a pointer to the current decoded row.
-    return dec.alpha_plane_ + @abs(row * width);
+    return dec.alpha_plane_.?.ptr + @abs(row * width);
 }
