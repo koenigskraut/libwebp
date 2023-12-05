@@ -841,7 +841,7 @@ fn DitherCombine8x8_C(dither_: [*c]const u8, dst_: [*c]u8, dst_stride: c_int) ca
 
 //------------------------------------------------------------------------------
 
-extern fn VP8DspInitSSE2() void;
+const VP8DspInitSSE2 = @import("dec_sse2.zig").VP8DspInitSSE2;
 const VP8DspInitSSE41 = @import("dec_sse41.zig").VP8DspInitSSE41;
 extern fn VP8DspInitNEON() void;
 extern fn VP8DspInitMIPS32() void;
