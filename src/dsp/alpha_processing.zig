@@ -18,7 +18,7 @@ const HALF = ((1 << MFIX) >> 1);
 const KINV_255 = ((1 << MFIX) / 255);
 
 fn Mult(x: u8, mult: u32) u32 {
-    const v: u32 = (@as(u32, x) * mult + HALF) >> MFIX;
+    const v: u32 = (@as(u32, x) *% mult +% HALF) >> MFIX;
     assert(v <= 255); // <- 24bit precision is enough to ensure that.
     return v;
 }
@@ -427,7 +427,7 @@ comptime {
 // Init function
 
 extern fn WebPInitAlphaProcessingMIPSdspR2() void;
-extern fn WebPInitAlphaProcessingSSE2() void;
+const WebPInitAlphaProcessingSSE2 = @import("alpha_processing_sse2.zig").WebPInitAlphaProcessingSSE2;
 const WebPInitAlphaProcessingSSE41 = @import("alpha_processing_sse41.zig").WebPInitAlphaProcessingSSE41;
 extern fn WebPInitAlphaProcessingNEON() void;
 
