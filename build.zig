@@ -233,7 +233,7 @@ const dsp_dec_srsc: StrSlice = &.{
     "src/dsp/rescaler_mips_dsp_r2.c",
     "src/dsp/rescaler_msa.c",
     "src/dsp/rescaler_neon.c",
-    "src/dsp/rescaler_sse2.c",
+    // "src/dsp/rescaler_sse2.c",
 
     // "src/dsp/upsampling.c",
     "src/dsp/upsampling_mips_dsp_r2.c",

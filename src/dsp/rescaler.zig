@@ -204,7 +204,7 @@ comptime {
     @export(WebPRescalerExportRowShrink, .{ .name = "WebPRescalerExportRowShrink" });
 }
 
-extern fn WebPRescalerDspInitSSE2() callconv(.C) void;
+const WebPRescalerDspInitSSE2 = @import("rescaler_sse2.zig").WebPRescalerDspInitSSE2;
 extern fn WebPRescalerDspInitMIPS32() callconv(.C) void;
 extern fn WebPRescalerDspInitMIPSdspR2() callconv(.C) void;
 extern fn WebPRescalerDspInitMSA() callconv(.C) void;

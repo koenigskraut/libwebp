@@ -123,7 +123,7 @@ pub inline fn Z_mm_or_si128(A: @Vector(2, u64), B: @Vector(2, u64)) @Vector(2, u
 pub inline fn Z_mm_mullo_epi16(A: @Vector(2, u64), B: @Vector(2, u64)) @Vector(2, u64) {
     const a: @Vector(8, u16) = @bitCast(A);
     const b: @Vector(8, u16) = @bitCast(B);
-    return @bitCast(a * b);
+    return @bitCast(a *% b);
 }
 
 pub inline fn Z_mm_mulhi_epi16(A: @Vector(2, u64), B: @Vector(2, u64)) @Vector(2, u64) {
@@ -260,6 +260,10 @@ pub inline fn Z_mm_slli_si128(A: @Vector(2, u64), comptime amount: comptime_int)
     return @bitCast(std.simd.shiftElementsRight(a, amount, 0));
 }
 
+pub inline fn Z_mm_slli_epi64(A: @Vector(2, u64), comptime amount: comptime_int) @Vector(2, u64) {
+    return A << @splat(amount);
+}
+
 pub inline fn Z_mm_max_epu8(A: @Vector(2, u64), B: @Vector(2, u64)) @Vector(2, u64) {
     const a: @Vector(16, u8) = @bitCast(A);
     const b: @Vector(16, u8) = @bitCast(B);
@@ -314,4 +318,42 @@ pub inline fn Z_mm_blend_epi16(A: @Vector(2, u64), B: @Vector(2, u64), comptime 
 
 pub inline fn Z_mm_srli_epi64(A: @Vector(2, u64), comptime amount: comptime_int) @Vector(2, u64) {
     return A >> @splat(amount);
+}
+
+pub inline fn Z_mm_madd_epi16(A: @Vector(2, u64), B: @Vector(2, u64)) @Vector(2, u64) {
+    return asm volatile (
+        \\ pmaddwd %xmm1, %xmm0
+        : [ret] "={xmm0}" (-> @Vector(2, u64)),
+        : [a] "{xmm0}" (A),
+          [b] "{xmm1}" (B),
+    );
+}
+
+pub inline fn Z_mm_sub_epi32(A: @Vector(2, u64), B: @Vector(2, u64)) @Vector(2, u64) {
+    const a: @Vector(4, i32) = @bitCast(A);
+    const b: @Vector(4, i32) = @bitCast(B);
+    return @bitCast(a - b);
+}
+
+pub inline fn Z_mm_mul_epu32(A: @Vector(2, u64), B: @Vector(2, u64)) @Vector(2, u64) {
+    const a = A & @Vector(2, u64){ 0xFFFFFFFF, 0xFFFFFFFF };
+    const b = B & @Vector(2, u64){ 0xFFFFFFFF, 0xFFFFFFFF };
+    return a *% b;
+}
+
+pub inline fn Z_mm_add_epi64(A: @Vector(2, u64), B: @Vector(2, u64)) @Vector(2, u64) {
+    return A +% B;
+}
+
+pub inline fn Z_mm_sub_epi64(A: @Vector(2, u64), B: @Vector(2, u64)) @Vector(2, u64) {
+    return A -% B;
+}
+
+pub inline fn Z_mm_packs_epi32(A: @Vector(2, u64), B: @Vector(2, u64)) @Vector(2, u64) {
+    return asm volatile (
+        \\ packssdw %xmm1, %xmm0
+        : [ret] "={xmm0}" (-> @Vector(2, u64)),
+        : [a] "{xmm0}" (A),
+          [b] "{xmm1}" (B),
+    );
 }
