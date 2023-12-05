@@ -237,7 +237,7 @@ comptime {
 extern fn VP8FiltersInitMIPSdspR2() callconv(.C) void;
 extern fn VP8FiltersInitMSA() callconv(.C) void;
 extern fn VP8FiltersInitNEON() callconv(.C) void;
-extern fn VP8FiltersInitSSE2() callconv(.C) void;
+const VP8FiltersInitSSE2 = @import("filters_sse2.zig").VP8FiltersInitSSE2;
 
 /// To be called first before using the above.
 pub const VP8FiltersInit = webp.WEBP_DSP_INIT_FUNC(struct {
@@ -258,7 +258,7 @@ pub const VP8FiltersInit = webp.WEBP_DSP_INIT_FUNC(struct {
 
         if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
-                // if (getCpuInfo(.kSSE2) != 0) VP8FiltersInitSSE2();
+                if (getCpuInfo(.kSSE2) != 0) VP8FiltersInitSSE2();
             }
             if (comptime webp.use_mips_dsp_r2) {
                 if (getCpuInfo(.kMIPSdspR2) != 0) VP8FiltersInitMIPSdspR2();

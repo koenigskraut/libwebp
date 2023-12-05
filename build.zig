@@ -219,7 +219,7 @@ const dsp_dec_srsc: StrSlice = &.{
     "src/dsp/filters_mips_dsp_r2.c",
     "src/dsp/filters_msa.c",
     "src/dsp/filters_neon.c",
-    "src/dsp/filters_sse2.c",
+    // "src/dsp/filters_sse2.c",
 
     // "src/dsp/lossless.c",
     "src/dsp/lossless_mips_dsp_r2.c",

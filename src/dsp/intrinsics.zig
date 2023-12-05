@@ -311,3 +311,7 @@ pub inline fn Z_mm_blend_epi16(A: @Vector(2, u64), B: @Vector(2, u64), comptime 
     const mask: @Vector(8, bool) = @bitCast(i);
     return @bitCast(@select(u16, mask, b, a));
 }
+
+pub inline fn Z_mm_srli_epi64(A: @Vector(2, u64), comptime amount: comptime_int) @Vector(2, u64) {
+    return A >> @splat(amount);
+}
