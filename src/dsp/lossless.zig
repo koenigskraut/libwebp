@@ -642,7 +642,7 @@ comptime {
 }
 
 extern fn VP8LDspInitSSE2() callconv(.C) void;
-extern fn VP8LDspInitSSE41() callconv(.C) void;
+const VP8LDspInitSSE41 = @import("lossless_sse41.zig").VP8LDspInitSSE41;
 extern fn VP8LDspInitNEON() callconv(.C) void;
 extern fn VP8LDspInitMIPSdspR2() callconv(.C) void;
 extern fn VP8LDspInitMSA() callconv(.C) void;
@@ -694,7 +694,7 @@ pub const VP8LDspInit = webp.WEBP_DSP_INIT_FUNC(struct {
                 if (getCpuInfo(.kSSE2) != 0) {
                     // VP8LDspInitSSE2();
                     if (comptime webp.have_sse41) {
-                        // if (getCpuInfo(.kSSE4_1) != 0) VP8LDspInitSSE41();
+                        if (getCpuInfo(.kSSE4_1) != 0) VP8LDspInitSSE41();
                     }
                 }
             }

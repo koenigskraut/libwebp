@@ -2,7 +2,7 @@ const webp = struct {
     usingnamespace @import("intrinsics.zig");
 };
 
-pub const m128 = @Vector(2, u64);
+const m128 = webp.m128;
 
 //------------------------------------------------------------------------------
 // Math functions.

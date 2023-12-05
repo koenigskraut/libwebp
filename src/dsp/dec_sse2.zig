@@ -8,6 +8,7 @@ const dec = @import("dec.zig");
 
 const c_bool = webp.c_bool;
 const m128 = webp.m128;
+const v128 = webp.v128;
 const BPS = @import("dsp.zig").BPS;
 
 //------------------------------------------------------------------------------
@@ -284,44 +285,6 @@ inline fn NeedsFilter_SSE2(p1: *const m128, p0: *const m128, q0: *const m128, q1
 
 //------------------------------------------------------------------------------
 // Edge filtering functions
-
-const v128 = packed struct {
-    v: @Vector(2, u64),
-
-    pub inline fn vec(self: v128) @Vector(2, u64) {
-        return @bitCast(self);
-    }
-
-    pub inline fn zero() v128 {
-        return .{ .v = @splat(0) };
-    }
-
-    pub inline fn set1u8(a: u8) v128 {
-        return .{ .v = @bitCast(@as(@Vector(16, u8), @splat(a))) };
-    }
-
-    pub inline fn set1u16(a: u16) v128 {
-        return .{ .v = @bitCast(@as(@Vector(8, u16), @splat(a))) };
-    }
-
-    pub inline fn set1u32(a: u32) v128 {
-        return .{ .v = @bitCast(@as(@Vector(4, u32), @splat(a))) };
-    }
-
-    /// mirror of _mm_set_epi32, beware of the reverse order
-    pub inline fn setU32(arr: [4]u32) v128 {
-        return .{ .v = @bitCast(@Vector(4, u32){ arr[3], arr[2], arr[1], arr[0] }) };
-    }
-
-    /// mirror of _mm_set_epi32, beware of the reverse order
-    pub inline fn setI32(arr: [4]i32) v128 {
-        return setU32(@bitCast(arr));
-    }
-
-    pub inline fn load128(ptr: [*c]u8) v128 {
-        return .{ .v = @bitCast(ptr[0..16].*) };
-    }
-};
 
 // Applies filter on 2 pixels (p0 and q0)
 inline fn DoFilter2_SSE2(p1: *m128, p0: *m128, q0: *m128, q1: *m128, thresh: c_int) void {

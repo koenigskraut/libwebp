@@ -1,5 +1,65 @@
 const std = @import("std");
 
+pub const m128 = @Vector(2, u64);
+
+pub const v128 = packed struct {
+    v: @Vector(2, u64),
+
+    pub inline fn vec(self: v128) @Vector(2, u64) {
+        return @bitCast(self);
+    }
+
+    pub inline fn zero() v128 {
+        return .{ .v = @splat(0) };
+    }
+
+    pub inline fn set1u8(a: u8) v128 {
+        return .{ .v = @bitCast(@as(@Vector(16, u8), @splat(a))) };
+    }
+
+    pub inline fn set1u16(a: u16) v128 {
+        return .{ .v = @bitCast(@as(@Vector(8, u16), @splat(a))) };
+    }
+
+    pub inline fn set1u32(a: u32) v128 {
+        return .{ .v = @bitCast(@as(@Vector(4, u32), @splat(a))) };
+    }
+
+    /// mirror of _mm_setr_epi8, beware of the reverse order
+    pub inline fn setU8(a: [16]u8) v128 {
+        return .{ .v = @bitCast(@Vector(16, u8){ a[15], a[14], a[13], a[12], a[11], a[10], a[9], a[8], a[7], a[6], a[5], a[4], a[3], a[2], a[1], a[0] }) };
+    }
+
+    /// mirror of _mm_setr_epi8, beware of the reverse order
+    pub inline fn setI8(a: [16]i8) v128 {
+        return setU8(@bitCast(a));
+    }
+
+    /// mirror of _mm_setr_epi8, beware of the reverse order
+    pub inline fn setU8R(a: [16]u8) v128 {
+        return .{ .v = @bitCast(a) };
+    }
+
+    /// mirror of _mm_setr_epi8, beware of the reverse order
+    pub inline fn setI8R(a: [16]i8) v128 {
+        return setU8R(@bitCast(a));
+    }
+
+    /// mirror of _mm_set_epi32, beware of the reverse order
+    pub inline fn setU32(a: [4]u32) v128 {
+        return .{ .v = @bitCast(@Vector(4, u32){ a[3], a[2], a[1], a[0] }) };
+    }
+
+    /// mirror of _mm_set_epi32, beware of the reverse order
+    pub inline fn setI32(a: [4]i32) v128 {
+        return setU32(@bitCast(a));
+    }
+
+    pub inline fn load128(ptr: [*c]const u8) v128 {
+        return .{ .v = @bitCast(ptr[0..16].*) };
+    }
+};
+
 pub inline fn Z_mm_loadl_epi64(ptr: [*c]const u8) @Vector(2, u64) {
     return .{ @as(u64, @bitCast(ptr[0..8].*)), 0 };
 }
@@ -224,4 +284,30 @@ pub inline fn Z_mm_sad_epu8(A: @Vector(2, u64), B: @Vector(2, u64)) @Vector(2, u
 pub inline fn Z_mm_shuffle_epi32(A: @Vector(2, u64), comptime shuffle: [4]i32) @Vector(2, u64) {
     const a: @Vector(4, u32) = @bitCast(A);
     return @bitCast(@shuffle(u32, a, undefined, shuffle));
+}
+
+pub inline fn Z_mm_shuffle_epi8(A: @Vector(2, u64), B: @Vector(2, u64)) @Vector(2, u64) {
+    return asm volatile (
+        \\ pshufb %xmm1, %xmm0
+        : [ret] "={xmm0}" (-> @Vector(2, u64)),
+        : [a] "{xmm0}" (A),
+          [b] "{xmm1}" (B),
+    );
+}
+
+pub inline fn Z_mm_blendv_epi8(A: @Vector(2, u64), B: @Vector(2, u64), mask: @Vector(2, u64)) @Vector(2, u64) {
+    return asm volatile (
+        \\ pblendvb %xmm0, %xmm1, %xmm3
+        : [ret] "={xmm3}" (-> @Vector(2, u64)),
+        : [a] "{xmm3}" (A),
+          [b] "{xmm1}" (B),
+          [mask] "{xmm0}" (mask),
+    );
+}
+
+pub inline fn Z_mm_blend_epi16(A: @Vector(2, u64), B: @Vector(2, u64), comptime i: u8) @Vector(2, u64) {
+    const a: @Vector(8, u16) = @bitCast(A);
+    const b: @Vector(8, u16) = @bitCast(B);
+    const mask: @Vector(8, bool) = @bitCast(i);
+    return @bitCast(@select(u16, mask, b, a));
 }
