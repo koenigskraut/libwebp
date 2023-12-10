@@ -240,7 +240,7 @@ const dsp_dec_srsc: StrSlice = &.{
     "src/dsp/upsampling_msa.c",
     "src/dsp/upsampling_neon.c",
     "src/dsp/upsampling_sse2.c",
-    "src/dsp/upsampling_sse41.c",
+    // "src/dsp/upsampling_sse41.c",
 
     // "src/dsp/yuv.c",
     "src/dsp/yuv_mips32.c",

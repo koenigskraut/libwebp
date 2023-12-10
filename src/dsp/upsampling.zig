@@ -12,7 +12,7 @@ const CspMode = webp.ColorspaceMode;
 //------------------------------------------------------------------------------
 // Fancy upsampler
 
-const WebPUpsampleLinePairFuncBody = fn (top_y: [*c]const u8, bottom_y: [*c]const u8, top_u: [*c]const u8, top_v: [*c]const u8, cur_u: [*c]const u8, cur_v: [*c]const u8, top_dst: [*c]u8, bottom_dst: [*c]u8, len: c_int) callconv(.C) void;
+pub const WebPUpsampleLinePairFuncBody = fn (top_y: [*c]const u8, bottom_y: [*c]const u8, top_u: [*c]const u8, top_v: [*c]const u8, cur_u: [*c]const u8, cur_v: [*c]const u8, top_dst: [*c]u8, bottom_dst: [*c]u8, len: c_int) callconv(.C) void;
 /// Convert a pair of y/u/v lines together to the output rgb/a colorspace.
 /// bottom_y can be NULL if only one line of output is needed (at top/bottom).
 pub const WebPUpsampleLinePairFunc = ?*const WebPUpsampleLinePairFuncBody;
@@ -190,7 +190,7 @@ comptime {
     @export(WebPYuv444ToRgb565_C, .{ .name = "WebPYuv444ToRgb565_C" });
 }
 
-const WebPYUV444ConverterBody = fn (y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, dst: [*c]u8, len: c_int) callconv(.C) void;
+pub const WebPYUV444ConverterBody = fn (y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, dst: [*c]u8, len: c_int) callconv(.C) void;
 pub const WebPYUV444Converter = ?*const WebPYUV444ConverterBody;
 /// YUV444->RGB converters
 pub var WebPYUV444Converters = [_]WebPYUV444Converter{null} ** @intFromEnum(CspMode.LAST);
@@ -200,7 +200,7 @@ comptime {
 
 extern fn WebPInitYUV444ConvertersMIPSdspR2() callconv(.C) void;
 extern fn WebPInitYUV444ConvertersSSE2() callconv(.C) void;
-extern fn WebPInitYUV444ConvertersSSE41() callconv(.C) void;
+const WebPInitYUV444ConvertersSSE41 = @import("upsampling_sse41.zig").WebPInitYUV444ConvertersSSE41;
 
 /// Must be called before using WebPYUV444Converters[]
 pub const WebPInitYUV444Converters = webp.WEBP_DSP_INIT_FUNC(struct {
@@ -242,7 +242,7 @@ comptime {
 // Main calls
 
 extern fn WebPInitUpsamplersSSE2() callconv(.C) void;
-extern fn WebPInitUpsamplersSSE41() callconv(.C) void;
+const WebPInitUpsamplersSSE41 = @import("upsampling_sse41.zig").WebPInitUpsamplersSSE41;
 extern fn WebPInitUpsamplersNEON() callconv(.C) void;
 extern fn WebPInitUpsamplersMIPSdspR2() callconv(.C) void;
 extern fn WebPInitUpsamplersMSA() callconv(.C) void;
