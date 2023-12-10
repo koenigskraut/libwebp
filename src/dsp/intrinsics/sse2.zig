@@ -1175,32 +1175,20 @@ pub inline fn _mm_setr_epi8(e15: i8, e14: i8, e13: i8, e12: i8, e11: i8, e10: i8
     const a = @Vector(16, i8){ e15, e14, e13, e12, e11, e10, e9, e8, e7, e6, e5, e4, e3, e2, e1, e0 };
     return @bitCast(a);
 }
-pub export fn Z_mm_setr_epi8(e15: i8, e14: i8, e13: i8, e12: i8, e11: i8, e10: i8, e9: i8, e8: i8, e7: i8, e6: i8, e5: i8, e4: i8, e3: i8, e2: i8, e1: i8, e0: i8) __m128i {
-    return _mm_setr_epi8(e15, e14, e13, e12, e11, e10, e9, e8, e7, e6, e5, e4, e3, e2, e1, e0);
-}
 
 // ...
 pub inline fn _mm_setr_pd(e1: f64, e0: f64) __m128d {
     return .{ e1, e0 };
-}
-export fn Z_mm_setr_pd(e1: f64, e0: f64) __m128d {
-    return _mm_setr_pd(e1, e0);
 }
 
 // xorpd
 pub inline fn _mm_setzero_pd() __m128d {
     return .{ 0, 0 };
 }
-export fn Z_mm_setzero_pd() __m128d {
-    return _mm_setzero_pd();
-}
 
 // pxor
 pub inline fn _mm_setzero_si128() __m128i {
     return .{ 0, 0 };
-}
-export fn Z_mm_setzero_si128() __m128i {
-    return _mm_setzero_si128();
 }
 
 // pshufd
@@ -1460,7 +1448,7 @@ pub inline fn _mm_storeh_pd(mem_addr: *f64, a: __m128d) void {
 }
 
 // movq
-pub inline fn _mm_storel_epi64(mem_addr: *i64, a: __m128i) void {
+pub inline fn _mm_storel_epi64(mem_addr: *align(1) i64, a: __m128i) void {
     mem_addr.* = a[0];
 }
 
@@ -1499,9 +1487,6 @@ pub inline fn _mm_stream_pd(mem_addr: [*]align(16) f64, a: __m128d) void {
         : [a] "{xmm0}" (a),
           [addr] "{rdi}" (mem_addr),
     );
-}
-export fn Z_mm_stream_pd(mem_addr: [*]align(16) f64, a: __m128d) void {
-    _mm_stream_pd(mem_addr, a);
 }
 
 // movntdq
