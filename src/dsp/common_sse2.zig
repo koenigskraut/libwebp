@@ -8,14 +8,14 @@ const __m128i = webp.__m128i;
 //------------------------------------------------------------------------------
 // Math functions.
 
-// // Return the sum of all the 8b in the register.
-// pub inline fn VP8HorizontalAdd8b(a: [*c]const @Vector(2, u64)) c_int {
-//   const zero: @Vector(2, u64) = @splat(0);
-//   const sad8x2 = _mm_sad_epu8(*a, zero);
-//   // sum the two sads: sad8x2[0:1] + sad8x2[8:9]
-//   const __m128i sum = _mm_add_epi32(sad8x2, _mm_shuffle_epi32(sad8x2, 2));
-//   return _mm_cvtsi128_si32(sum);
-// }
+// Return the sum of all the 8b in the register.
+pub inline fn VP8HorizontalAdd8b(a: *const __m128i) i32 {
+    const zero = webp._mm_setzero_si128();
+    const sad8x2 = webp._mm_sad_epu8(a.*, zero);
+    // sum the two sads: sad8x2[0:1] + sad8x2[8:9]
+    const sum = webp._mm_add_epi32(sad8x2, webp._mm_shuffle_epi32(sad8x2, 2));
+    return webp._mm_cvtsi128_si32(sum);
+}
 
 // Transpose two 4x4 16b matrices horizontally stored in registers.
 pub inline fn VP8Transpose_2_4x4_16b(in0: *const m128, in1: *const m128, in2: *const m128, in3: *const m128, out0: *m128, out1: *m128, out2: *m128, out3: *m128) void {

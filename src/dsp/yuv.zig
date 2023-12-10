@@ -2,6 +2,7 @@ const std = @import("std");
 const build_options = @import("build_options");
 const webp = struct {
     usingnamespace @import("cpu.zig");
+    usingnamespace @import("yuv_sse2.zig");
     usingnamespace @import("yuv_sse41.zig");
     usingnamespace @import("../utils/utils.zig");
     usingnamespace @import("../webp/decode.zig");
@@ -179,7 +180,7 @@ comptime {
     @export(WebPSamplers, .{ .name = "WebPSamplers" });
 }
 
-extern fn WebPInitSamplersSSE2() callconv(.C) void;
+const WebPInitSamplersSSE2 = webp.WebPInitSamplersSSE2;
 const WebPInitSamplersSSE41 = webp.WebPInitSamplersSSE41;
 extern fn WebPInitSamplersMIPS32() callconv(.C) void;
 extern fn WebPInitSamplersMIPSdspR2() callconv(.C) void;
@@ -202,7 +203,7 @@ pub const WebPInitSamplers = webp.WEBP_DSP_INIT_FUNC(struct {
         // If defined, use CPUInfo() to overwrite some pointers with faster versions.
         if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
-                // if (getCpuInfo(.kSSE2) != 0) WebPInitSamplersSSE2();
+                if (getCpuInfo(.kSSE2) != 0) WebPInitSamplersSSE2();
             }
             if (comptime webp.have_sse41) {
                 if (getCpuInfo(.kSSE4_1) != 0) WebPInitSamplersSSE41();
@@ -364,7 +365,7 @@ comptime {
     @export(WebPConvertARGBToUV, .{ .name = "WebPConvertARGBToUV" });
 }
 
-extern fn WebPInitConvertARGBToYUVSSE2() callconv(.C) void;
+const WebPInitConvertARGBToYUVSSE2 = webp.WebPInitConvertARGBToYUVSSE2;
 const WebPInitConvertARGBToYUVSSE41 = webp.WebPInitConvertARGBToYUVSSE41;
 extern fn WebPInitConvertARGBToYUVNEON() callconv(.C) void;
 
@@ -382,7 +383,7 @@ pub const WebPInitConvertARGBToYUV = webp.WEBP_DSP_INIT_FUNC(struct {
         if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
                 if (getCpuInfo(.kSSE2) != 0) {
-                    // WebPInitConvertARGBToYUVSSE2();
+                    WebPInitConvertARGBToYUVSSE2();
                 }
             }
             if (comptime webp.have_sse41) {

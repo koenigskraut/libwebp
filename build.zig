@@ -246,7 +246,7 @@ const dsp_dec_srsc: StrSlice = &.{
     "src/dsp/yuv_mips32.c",
     "src/dsp/yuv_mips_dsp_r2.c",
     "src/dsp/yuv_neon.c",
-    "src/dsp/yuv_sse2.c",
+    // "src/dsp/yuv_sse2.c",
     // "src/dsp/yuv_sse41.c",
 };
 
