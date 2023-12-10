@@ -2,6 +2,7 @@ const std = @import("std");
 const build_options = @import("build_options");
 const webp = struct {
     usingnamespace @import("cpu.zig");
+    usingnamespace @import("yuv_sse41.zig");
     usingnamespace @import("../utils/utils.zig");
     usingnamespace @import("../webp/decode.zig");
 };
@@ -9,8 +10,8 @@ const webp = struct {
 const assert = std.debug.assert;
 const c_bool = webp.c_bool;
 
-const YUV_FIX = 16; // fixed-point precision for RGB->YUV
-const YUV_HALF = 1 << (YUV_FIX - 1);
+pub const YUV_FIX = 16; // fixed-point precision for RGB->YUV
+pub const YUV_HALF = 1 << (YUV_FIX - 1);
 
 const YUV_FIX2 = 6; // fixed-point precision for YUV->RGB
 const YUV_MASK2 = (256 << YUV_FIX2) - 1;
@@ -179,7 +180,7 @@ comptime {
 }
 
 extern fn WebPInitSamplersSSE2() callconv(.C) void;
-extern fn WebPInitSamplersSSE41() callconv(.C) void;
+const WebPInitSamplersSSE41 = webp.WebPInitSamplersSSE41;
 extern fn WebPInitSamplersMIPS32() callconv(.C) void;
 extern fn WebPInitSamplersMIPSdspR2() callconv(.C) void;
 
@@ -201,16 +202,16 @@ pub const WebPInitSamplers = webp.WEBP_DSP_INIT_FUNC(struct {
         // If defined, use CPUInfo() to overwrite some pointers with faster versions.
         if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
-                // if (getCpuInfo(.kSSE2)) WebPInitSamplersSSE2();
+                // if (getCpuInfo(.kSSE2) != 0) WebPInitSamplersSSE2();
             }
             if (comptime webp.have_sse41) {
-                // if (getCpuInfo(.kSSE4_1))  WebPInitSamplersSSE41();
+                if (getCpuInfo(.kSSE4_1) != 0) WebPInitSamplersSSE41();
             }
             if (comptime webp.use_mips32) {
-                if (getCpuInfo(.kMIPS32)) WebPInitSamplersMIPS32();
+                if (getCpuInfo(.kMIPS32) != 0) WebPInitSamplersMIPS32();
             }
             if (comptime webp.use_mips_dsp_r2) {
-                if (getCpuInfo(.kMIPSdspR2)) WebPInitSamplersMIPSdspR2();
+                if (getCpuInfo(.kMIPSdspR2) != 0) WebPInitSamplersMIPSdspR2();
             }
         }
     }
@@ -364,7 +365,7 @@ comptime {
 }
 
 extern fn WebPInitConvertARGBToYUVSSE2() callconv(.C) void;
-extern fn WebPInitConvertARGBToYUVSSE41() callconv(.C) void;
+const WebPInitConvertARGBToYUVSSE41 = webp.WebPInitConvertARGBToYUVSSE41;
 extern fn WebPInitConvertARGBToYUVNEON() callconv(.C) void;
 
 // Must be called before using the above.
@@ -386,7 +387,7 @@ pub const WebPInitConvertARGBToYUV = webp.WEBP_DSP_INIT_FUNC(struct {
             }
             if (comptime webp.have_sse41) {
                 if (getCpuInfo(.kSSE4_1) != 0) {
-                    // WebPInitConvertARGBToYUVSSE41();
+                    WebPInitConvertARGBToYUVSSE41();
                 }
             }
         }
