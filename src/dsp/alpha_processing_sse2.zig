@@ -6,16 +6,9 @@ const webp = struct {
 const alpha_processing = @import("alpha_processing.zig");
 
 const c_bool = webp.c_bool;
-const m128i = @Vector(16, u8);
-
-const c = @cImport({
-    @cInclude("emmintrin.h");
-    @cInclude("xmmintrin.h");
-});
+const __m128i = webp.__m128i;
 
 //------------------------------------------------------------------------------
-
-const __m128i = c.__m128i;
 
 fn DispatchAlpha_SSE2(noalias alpha_: [*c]const u8, alpha_stride: c_int, width: c_int, height: c_int, noalias dst_: [*c]u8, dst_stride: c_int) callconv(.C) c_bool {
     var alpha, var dst = .{ alpha_, dst_ };
@@ -225,26 +218,26 @@ inline fn lo8(v: @Vector(8, u16)) @Vector(8, u8) {
 // immediate in the _mm_shufflexx_epi16() instruction. We really need a macro.
 // We use: v / 255 = (v * 0x8081) >> 23, where v = alpha * {r,g,b} is a 16bit
 // value.
-inline fn APPLY_ALPHA(rgbx: [*c]u32, comptime shuffle: [4]i32) void {
+inline fn APPLY_ALPHA(rgbx: [*c]u32, comptime shuffle: [4]u8) void {
     const kMult: @Vector(8, u16) = @splat(0x8081);
     const kMask: @Vector(16, u8) = @bitCast(@Vector(8, u16){ 0, 0xff, 0xff, 0, 0, 0xff, 0xff, 0 });
-    const argb0: @Vector(2, u64) = @bitCast(rgbx[0..4].*);
-    const argb1_lo = webp.Z_mm_unpacklo_epi8(argb0, .{ 0, 0 });
-    const argb1_hi = webp.Z_mm_unpackhi_epi8(argb0, .{ 0, 0 });
-    const alpha0_lo = webp.Z_mm_or_si128(argb1_lo, @bitCast(kMask));
-    const alpha0_hi = webp.Z_mm_or_si128(argb1_hi, @bitCast(kMask));
-    const alpha1_lo = webp.Z_mm_shufflelo_epi16(alpha0_lo, shuffle);
-    const alpha1_hi = webp.Z_mm_shufflelo_epi16(alpha0_hi, shuffle);
-    const alpha2_lo = webp.Z_mm_shufflehi_epi16(alpha1_lo, shuffle);
-    const alpha2_hi = webp.Z_mm_shufflehi_epi16(alpha1_hi, shuffle);
+    const argb0: __m128i = @bitCast(rgbx[0..4].*);
+    const argb1_lo = webp._mm_unpacklo_epi8(argb0, .{ 0, 0 });
+    const argb1_hi = webp._mm_unpackhi_epi8(argb0, .{ 0, 0 });
+    const alpha0_lo = webp._mm_or_si128(argb1_lo, @bitCast(kMask));
+    const alpha0_hi = webp._mm_or_si128(argb1_hi, @bitCast(kMask));
+    const alpha1_lo = webp._mm_shufflelo_epi16(alpha0_lo, webp._mm_shuffle(shuffle));
+    const alpha1_hi = webp._mm_shufflelo_epi16(alpha0_hi, webp._mm_shuffle(shuffle));
+    const alpha2_lo = webp._mm_shufflehi_epi16(alpha1_lo, webp._mm_shuffle(shuffle));
+    const alpha2_hi = webp._mm_shufflehi_epi16(alpha1_hi, webp._mm_shuffle(shuffle));
     // alpha2 = [ff a0 a0 a0][ff a1 a1 a1]
-    const A0_lo = webp.Z_mm_mullo_epi16(alpha2_lo, argb1_lo);
-    const A0_hi = webp.Z_mm_mullo_epi16(alpha2_hi, argb1_hi);
-    const A1_lo = webp.Z_mm_mulhi_epu16(A0_lo, @bitCast(kMult));
-    const A1_hi = webp.Z_mm_mulhi_epu16(A0_hi, @bitCast(kMult));
+    const A0_lo = webp._mm_mullo_epi16(alpha2_lo, argb1_lo);
+    const A0_hi = webp._mm_mullo_epi16(alpha2_hi, argb1_hi);
+    const A1_lo = webp._mm_mulhi_epu16(A0_lo, @bitCast(kMult));
+    const A1_hi = webp._mm_mulhi_epu16(A0_hi, @bitCast(kMult));
     const A2_lo = @as(@Vector(8, u16), @bitCast(A1_lo)) >> @splat(7);
     const A2_hi = @as(@Vector(8, u16), @bitCast(A1_hi)) >> @splat(7);
-    const A3 = webp.Z_mm_packus_epi16(@bitCast(A2_lo), @bitCast(A2_hi));
+    const A3 = webp._mm_packus_epi16(@bitCast(A2_lo), @bitCast(A2_hi));
     rgbx[0..4].* = @bitCast(A3);
 }
 
@@ -256,11 +249,11 @@ fn ApplyAlphaMultiply_SSE2(rgba_: [*c]u8, alpha_first: c_bool, w: c_int, h_: c_i
         var i: usize = 0;
         if (!(alpha_first != 0)) {
             while (i + kSpan <= w) : (i += kSpan) {
-                APPLY_ALPHA(rgbx[i..], .{ 3, 3, 3, 2 }); // mask reversed
+                APPLY_ALPHA(rgbx[i..], .{ 2, 3, 3, 3 }); // mask reversed
             }
         } else {
             while (i + kSpan <= w) : (i += kSpan) {
-                APPLY_ALPHA(rgbx[i..], .{ 1, 0, 0, 0 }); // mask reversed
+                APPLY_ALPHA(rgbx[i..], .{ 0, 0, 0, 1 }); // mask reversed
             }
         }
         // Finish with left-overs.
@@ -362,24 +355,24 @@ fn MultARGBRow_SSE2(ptr: [*c]u32, width_: c_int, inverse: c_bool) callconv(.C) v
     var x: usize = 0;
     if (!(inverse != 0)) {
         const kSpan = 2;
-        const zero: @Vector(2, u64) = @splat(0);
-        const k128: @Vector(8, u16) = @splat(128);
-        const kMult: @Vector(8, u16) = @splat(0x0101);
-        const kMask: @Vector(8, u16) = .{ 0, 0, 0xff, 0, 0, 0, 0xff, 0 };
+        const zero = webp._mm_setzero_si128();
+        const k128 = webp._mm_set1_epi16(128);
+        const kMult = webp._mm_set1_epi16(0x0101);
+        const kMask = webp._mm_set_epi16(0, 0xff, 0, 0, 0, 0xff, 0, 0);
         while (x + kSpan <= width) : (x += kSpan) {
             // To compute 'result = (int)(a * x / 255. + .5)', we use:
             //   tmp = a * v + 128, result = (tmp * 0x0101u) >> 16
-            const A0 = webp.Z_mm_loadl_epi64(@ptrCast(ptr[x..]));
-            const A1 = webp.Z_mm_unpacklo_epi8(A0, zero);
-            const A2 = webp.Z_mm_or_si128(A1, @bitCast(kMask));
-            const A3 = webp.Z_mm_shufflelo_epi16(A2, .{ 3, 3, 3, 2 });
-            const A4 = webp.Z_mm_shufflehi_epi16(A3, .{ 3, 3, 3, 2 });
+            const A0 = webp._mm_loadl_epi64(@ptrCast(@alignCast(ptr[x..])));
+            const A1 = webp._mm_unpacklo_epi8(A0, zero);
+            const A2 = webp._mm_or_si128(A1, kMask);
+            const A3 = webp._mm_shufflelo_epi16(A2, webp._mm_shuffle(.{ 2, 3, 3, 3 }));
+            const A4 = webp._mm_shufflehi_epi16(A3, webp._mm_shuffle(.{ 2, 3, 3, 3 }));
             // here, A4 = [ff a0 a0 a0][ff a1 a1 a1]
-            const A5 = webp.Z_mm_mullo_epi16(A4, A1);
-            const A6 = webp.Z_mm_add_epi16(A5, @bitCast(k128));
-            const A7 = webp.Z_mm_mulhi_epu16(A6, @bitCast(kMult));
-            const A10 = webp.Z_mm_packus_epi16(A7, zero);
-            webp.Z_mm_storel_epi64(@ptrCast(ptr[x..]), A10);
+            const A5 = webp._mm_mullo_epi16(A4, A1);
+            const A6 = webp._mm_add_epi16(A5, k128);
+            const A7 = webp._mm_mulhi_epu16(A6, kMult);
+            const A10 = webp._mm_packus_epi16(A7, zero);
+            webp._mm_storel_epi64(@ptrCast(@alignCast(ptr[x..])), A10);
         }
     }
     width -|= x;
@@ -390,19 +383,19 @@ fn MultRow_SSE2(noalias ptr: [*c]u8, noalias alpha: [*c]const u8, width_: c_int,
     var width: usize = @intCast(width_);
     var x: usize = 0;
     if (!(inverse != 0)) {
-        const zero: @Vector(2, u64) = @splat(0);
-        const k128: @Vector(8, u16) = @splat(128);
-        const kMult: @Vector(8, u16) = @splat(0x0101);
+        const zero = webp._mm_setzero_si128();
+        const k128 = webp._mm_set1_epi16(128);
+        const kMult = webp._mm_set1_epi16(0x0101);
         while (x + 8 <= width) : (x += 8) {
-            const v0 = webp.Z_mm_loadl_epi64(ptr[x..]);
-            const a0 = webp.Z_mm_loadl_epi64(alpha[x..]);
-            const v1 = webp.Z_mm_unpacklo_epi8(v0, zero);
-            const a1 = webp.Z_mm_unpacklo_epi8(a0, zero);
-            const v2 = webp.Z_mm_mullo_epi16(v1, a1);
-            const v3 = webp.Z_mm_add_epi16(v2, @bitCast(k128));
-            const v4 = webp.Z_mm_mulhi_epu16(v3, @bitCast(kMult));
-            const v5 = webp.Z_mm_packus_epi16(v4, zero);
-            webp.Z_mm_storel_epi64(ptr[x..], v5);
+            const v0 = webp._mm_loadl_epi64(@ptrCast(@alignCast(ptr[x..])));
+            const a0 = webp._mm_loadl_epi64(@ptrCast(@alignCast(alpha[x..])));
+            const v1 = webp._mm_unpacklo_epi8(v0, zero);
+            const a1 = webp._mm_unpacklo_epi8(a0, zero);
+            const v2 = webp._mm_mullo_epi16(v1, a1);
+            const v3 = webp._mm_add_epi16(v2, k128);
+            const v4 = webp._mm_mulhi_epu16(v3, kMult);
+            const v5 = webp._mm_packus_epi16(v4, zero);
+            webp._mm_storel_epi64(@ptrCast(@alignCast(ptr[x..])), v5);
         }
     }
     width -= x;
