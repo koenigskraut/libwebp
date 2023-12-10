@@ -311,7 +311,7 @@ fn ChangeState(idec: *IDecoder, new_state: DecState, consumed_bytes: usize) void
 // Headers
 fn DecodeWebPHeaders(idec: *IDecoder) VP8Status {
     const mem = &idec.mem_;
-    var data: [*c]const u8 = mem.buf_ + mem.start_;
+    const data: [*c]const u8 = mem.buf_ + mem.start_;
     const curr_size = MemDataSize(mem);
     //   VP8StatusCode status;
     var headers: webp.HeaderStructure = undefined;
@@ -319,7 +319,7 @@ fn DecodeWebPHeaders(idec: *IDecoder) VP8Status {
     headers.data = data;
     headers.data_size = curr_size;
     headers.have_all_data = 0;
-    var status = webp.WebPParseHeaders(&headers);
+    const status = webp.WebPParseHeaders(&headers);
     if (status == .NotEnoughData) {
         return .Suspended; // We haven't found a VP8 chunk yet.
     } else if (status != .Ok) {
@@ -356,7 +356,7 @@ fn DecodeVP8FrameHeader(idec: *IDecoder) VP8Status {
         return IDecError(idec, .BitstreamError);
     }
 
-    var bits: u32 = @as(u32, data[0]) | (@as(u32, data[1]) << 8) | (@as(u32, data[2]) << 16);
+    const bits: u32 = @as(u32, data[0]) | (@as(u32, data[1]) << 8) | (@as(u32, data[2]) << 16);
     idec.mem_.part0_size_ = (bits >> 5) + webp.VP8_FRAME_HEADER_SIZE;
 
     idec.io_.data = data;

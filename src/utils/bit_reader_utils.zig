@@ -333,7 +333,7 @@ inline fn VP8LoadNewBytes(noalias br: *VP8BitReader) void {
         //     : "memory", "at"
         //     );
         // #else
-        var in_bits = std.mem.readInt(lbit_t, br.buf_[0..@sizeOf(lbit_t)], .big);
+        const in_bits = std.mem.readInt(lbit_t, br.buf_[0..@sizeOf(lbit_t)], .big);
         // #endif
         br.buf_ += BITS >> 3;
         var bits: bit_t = @intCast(in_bits);

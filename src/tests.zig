@@ -279,7 +279,7 @@ fn decodeAllInto(comptime prefix: []const u8, data: []const u8, allocator: std.m
     }
     // WebPDecodeYUVInto
     {
-        var decode_into = try allocator.alloc(u8, max_size);
+        const decode_into = try allocator.alloc(u8, max_size);
         defer allocator.free(decode_into);
         var config: c.WebPDecoderConfig = undefined;
         try expect(c.WebPInitDecoderConfig(&config) == 1);

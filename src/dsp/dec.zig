@@ -146,8 +146,7 @@ fn TransformOne_C(in_: [*c]const i16, dst_: [*c]u8) void {
 }
 
 // Simplified transform when only in[0], in[1] and in[4] are non-zero
-fn TransformAC3_C(in_: [*c]const i16, dst_: [*c]u8) callconv(.C) void {
-    var in, var dst = .{ in_, dst_ };
+fn TransformAC3_C(in: [*c]const i16, dst: [*c]u8) callconv(.C) void {
     const a = @as(i32, in[0]) + 4;
     const c4 = MUL2(in[4]);
     const d4 = MUL1(in[4]);
@@ -226,7 +225,7 @@ inline fn DST(dst: [*c]u8, x: u8, y: u8) [*c]u8 {
 
 inline fn TrueMotion(dst_: [*c]u8, size: u32) void {
     var dst = dst_;
-    var top: [*c]const u8 = dst - BPS;
+    const top: [*c]const u8 = dst - BPS;
     const clip0: [*c]const u8 = webp.VP8kclip1 - (top - 1)[0];
     for (0..size) |_| { // y
         const clip: [*c]const u8 = clip0 + (dst - 1)[0];
@@ -314,7 +313,7 @@ inline fn AVG2(a: u32, b: u32) u32 {
 }
 
 fn VE4_C(dst: [*c]u8) callconv(.C) void { // vertical
-    var top: [*c]const u8 = dst - BPS;
+    const top: [*c]const u8 = dst - BPS;
     const vals = [4]u8{
         @truncate(AVG3((top - 1)[0], top[0], top[1])),
         @truncate(AVG3(top[0], top[1], top[2])),

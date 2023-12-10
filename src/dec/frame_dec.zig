@@ -387,8 +387,8 @@ inline fn MACROBLOCK_VPOS(mb_y: anytype) @TypeOf(mb_y) {
 
 // Finalize and transmit a complete row. Return false in case of user-abort.
 fn FinishRow(arg_arg1: ?*anyopaque, arg_arg2: ?*anyopaque) callconv(.C) c_int {
-    var arg1 = arg_arg1;
-    var arg2 = arg_arg2;
+    const arg1 = arg_arg1;
+    const arg2 = arg_arg2;
     const dec: *webp.VP8Decoder = @ptrCast(@alignCast(arg1.?));
     const io: *webp.VP8Io = @ptrCast(@alignCast(arg2.?));
     var ok: c_int = 1;

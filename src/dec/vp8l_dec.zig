@@ -329,7 +329,7 @@ fn BuildPackedTable(htree_group: *webp.HTreeGroup) void {
     for (0..webp.HUFFMAN_PACKED_TABLE_SIZE) |code| {
         var bits: u32 = @truncate(code);
         const huff: *webp.HuffmanCode32 = &htree_group.packed_table[bits];
-        var hcode: webp.HuffmanCode = htree_group.htrees[@intFromEnum(HuffIndex.GREEN)][bits];
+        const hcode: webp.HuffmanCode = htree_group.htrees[@intFromEnum(HuffIndex.GREEN)][bits];
         if (hcode.value >= webp.NUM_LITERAL_CODES) {
             huff.bits = @as(c_int, hcode.bits) + BITS_SPECIAL_MARKER;
             huff.value = hcode.value;
@@ -376,9 +376,9 @@ fn ReadHuffmanCodeLengths(dec: *VP8LDecoder, code_length_code_lengths: [*c]const
         if (max_symbol == 0) break;
         max_symbol -= 1;
         webp.VP8LFillBitWindow(br);
-        var p: *const webp.HuffmanCode = &tables.curr_segment.?.start.?[webp.VP8LPrefetchBits(br) & webp.LENGTHS_TABLE_MASK];
+        const p: *const webp.HuffmanCode = &tables.curr_segment.?.start.?[webp.VP8LPrefetchBits(br) & webp.LENGTHS_TABLE_MASK];
         webp.VP8LSetBitPos(br, br.bit_pos_ + p.bits);
-        var code_len: c_int = p.value;
+        const code_len: c_int = p.value;
         if (code_len < kCodeLengthLiterals) {
             code_lengths[@intCast(symbol)] = code_len;
             symbol += 1;
@@ -458,7 +458,7 @@ fn ReadHuffmanCodes(dec: *VP8LDecoder, xsize: c_int, ysize: c_int, color_cache_b
     const hdr = &dec.hdr_;
     var huffman_image: [*c]u32 = null;
     var htree_groups: [*c]webp.HTreeGroup = null;
-    var huffman_tables = &hdr.huffman_tables_;
+    const huffman_tables = &hdr.huffman_tables_;
     var num_htree_groups: u32 = 1;
     var num_htree_groups_max: u32 = 1;
     var mapping: [*c]c_int = null;
@@ -781,7 +781,7 @@ fn EmitRescaledRowsYUVA(dec: *const VP8LDecoder, in_arg: [*c]u8, in_stride: c_in
         const lines_left: c_int = mb_h - num_lines_in;
         const needed_lines = webp.WebPRescaleNeededLines(dec.rescaler.?, lines_left);
         webp.WebPMultARGBRows(in, in_stride, dec.rescaler.?.src_width, needed_lines, 0);
-        var lines_imported: c_int = webp.WebPRescalerImport(dec.rescaler.?, lines_left, in, in_stride);
+        const lines_imported: c_int = webp.WebPRescalerImport(dec.rescaler.?, lines_left, in, in_stride);
         assert(lines_imported == needed_lines);
         num_lines_in += lines_imported;
         in = webp.offsetPtr(in, needed_lines * in_stride);
@@ -950,7 +950,7 @@ fn ExtractPalettedAlphaRows(dec: *VP8LDecoder, last_row: c_int) void {
     if (last_row > first_row) {
         // Special method for paletted alpha data. We only process the cropped area.
         const width = dec.io_.?.width;
-        var out: [*c]u8 = webp.offsetPtr(alph_dec.output_, width * first_row);
+        const out: [*c]u8 = webp.offsetPtr(alph_dec.output_, width * first_row);
         const in = webp.offsetPtr(@as([*c]const u8, @ptrCast(dec.pixels_)), dec.width_ * first_row);
         const transform = &dec.transforms_[0];
         assert(dec.next_transform_ == 1);
@@ -1123,7 +1123,7 @@ fn DecodeAlphaData(dec: *VP8LDecoder, data: [*c]u8, width: c_int, height: c_int,
             }
             assert(htree_group != null);
             webp.VP8LFillBitWindow(br);
-            var code = ReadSymbol(htree_group.*.htrees[@intFromEnum(HuffIndex.GREEN)], br);
+            const code = ReadSymbol(htree_group.*.htrees[@intFromEnum(HuffIndex.GREEN)], br);
             if (code < webp.NUM_LITERAL_CODES) { // Literal
                 data[@intCast(pos)] = @intCast(code);
                 pos += 1;
@@ -1139,8 +1139,8 @@ fn DecodeAlphaData(dec: *VP8LDecoder, data: [*c]u8, width: c_int, height: c_int,
                 const length = GetCopyLength(length_sym, br);
                 const dist_symbol = ReadSymbol(htree_group.*.htrees[@intFromEnum(HuffIndex.DIST)], br);
                 webp.VP8LFillBitWindow(br);
-                var dist_code = GetCopyDistance(dist_symbol, br);
-                var dist = PlaneCodeToDistance(width, dist_code);
+                const dist_code = GetCopyDistance(dist_symbol, br);
+                const dist = PlaneCodeToDistance(width, dist_code);
                 if (pos >= dist and end - pos >= length) {
                     CopyBlock8b(webp.offsetPtr(data, pos), dist, length);
                 } else {
@@ -1775,7 +1775,7 @@ pub fn VP8LDecodeImage(dec_arg: ?*VP8LDecoder) c_int {
     assert(dec.hdr_.htree_groups_ != null);
     assert(dec.hdr_.num_htree_groups_ > 0);
 
-    var io = dec.io_.?;
+    const io = dec.io_.?;
     var params: *webp.DecParams = @ptrCast(@alignCast(io.@"opaque".?));
 
     GotoErr: {

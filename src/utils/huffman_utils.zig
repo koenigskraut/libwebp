@@ -229,7 +229,7 @@ fn BuildHuffmanTable(root_table: [*c]HuffmanCode, root_bits: c_int, code_lengths
         var len: usize = undefined; // current code length
         var step: c_int = undefined; // step size to replicate values in current table
         var low: u32 = 0xffffffff; // low bits for current root entry
-        var mask: u32 = @bitCast(@as(i32, total_size - 1)); // mask for low bits
+        const mask: u32 = @bitCast(@as(i32, total_size - 1)); // mask for low bits
         var key: u32 = 0; // reversed prefix code
         var num_nodes: c_int = 1; // number of Huffman tree nodes
         var num_open: c_int = 1; // number of open branches in current tree level

@@ -306,13 +306,13 @@ fn ParseOptionalChunks(data: *[*c]const u8, data_size: *usize, riff_size: usize,
         // Insufficient data.
         if (buf_size < webp.CHUNK_HEADER_SIZE) return .NotEnoughData;
 
-        var chunk_size = webp.getLE32(buf[webp.TAG_SIZE..][0..4]);
+        const chunk_size = webp.getLE32(buf[webp.TAG_SIZE..][0..4]);
         // Not a valid chunk size.
         if (chunk_size > webp.MAX_CHUNK_PAYLOAD) return .BitstreamError;
 
         // For odd-sized chunk-payload, there's one byte padding at the end.
         // var disk_chunk_size = ((@as(u32, @bitCast(@as(c_int, 8))) +% chunk_size) +% @as(u32, @bitCast(@as(c_int, 1)))) & ~@as(c_uint, 1);
-        var disk_chunk_size: u32 = (webp.CHUNK_HEADER_SIZE + chunk_size + 1) & ~@as(u32, 1);
+        const disk_chunk_size: u32 = (webp.CHUNK_HEADER_SIZE + chunk_size + 1) & ~@as(u32, 1);
         total_size +%= disk_chunk_size;
 
         // Check that total bytes skipped so far does not exceed riff_size.

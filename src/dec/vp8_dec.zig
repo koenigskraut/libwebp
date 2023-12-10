@@ -614,7 +614,7 @@ fn ParseSegmentHeader(br: *webp.VP8BitReader, hdr: *VP8SegmentHeader, proba: *VP
 fn ParsePartitions(dec: *VP8Decoder, buf: [*c]const u8, size: usize) webp.VP8Error!void {
     const br = &dec.br_;
     var sz: [*c]const u8 = buf;
-    var buf_end: [*c]const u8 = buf + size;
+    const buf_end: [*c]const u8 = buf + size;
     var size_left = size;
     // size_t p;
 

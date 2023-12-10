@@ -284,13 +284,13 @@ fn InitYUVRescaler(io: *const webp.VP8Io, p: *webp.DecParams) c_bool {
     if (has_alpha) {
         total_size += work_size * @sizeOf(webp.rescaler_t);
     }
-    var rescaler_size: usize = num_rescalers * @sizeOf(webp.WebPRescaler) + webp.WEBP_ALIGN_CST;
+    const rescaler_size: usize = num_rescalers * @sizeOf(webp.WebPRescaler) + webp.WEBP_ALIGN_CST;
     total_size += rescaler_size;
     if (!webp.CheckSizeOverflow(total_size)) return 0;
 
     p.memory = webp.WebPSafeMalloc(1, total_size);
     if (p.memory == null) return 0; // memory error
-    var work: [*]webp.rescaler_t = @ptrCast(@alignCast(p.memory.?));
+    const work: [*]webp.rescaler_t = @ptrCast(@alignCast(p.memory.?));
     var scalers: [*]webp.WebPRescaler = @ptrFromInt(webp.WEBP_ALIGN(@as([*]const u8, @ptrCast(work)) + total_size - rescaler_size));
     p.scaler_y = &scalers[0];
     p.scaler_u = &scalers[1];
@@ -456,10 +456,10 @@ fn InitRGBRescaler(io: *const webp.VP8Io, p: *webp.DecParams) c_bool {
     // WebPRescaler* scalers;
     const num_rescalers: c_int = if (has_alpha) 4 else 3;
 
-    var tmp_size1: u64 = @intCast(num_rescalers * work_size);
-    var tmp_size2: u64 = @intCast(num_rescalers * out_width);
+    const tmp_size1: u64 = @intCast(num_rescalers * work_size);
+    const tmp_size2: u64 = @intCast(num_rescalers * out_width);
     var total_size: u64 = tmp_size1 * @sizeOf(webp.rescaler_t) + tmp_size2 * @sizeOf(u8);
-    var rescaler_size: u64 = @abs(num_rescalers) * @sizeOf(webp.WebPRescaler) + webp.WEBP_ALIGN_CST;
+    const rescaler_size: u64 = @abs(num_rescalers) * @sizeOf(webp.WebPRescaler) + webp.WEBP_ALIGN_CST;
     total_size += rescaler_size;
     if (!webp.CheckSizeOverflow(total_size)) return 0;
 
@@ -467,8 +467,8 @@ fn InitRGBRescaler(io: *const webp.VP8Io, p: *webp.DecParams) c_bool {
     if (p.memory == null) {
         return 0; // memory error
     }
-    var work: [*]webp.rescaler_t = @ptrCast(@alignCast(p.memory.?)); // rescalers work area
-    var tmp: [*c]u8 = @ptrCast(work + tmp_size1); // tmp storage for scaled YUV444 samples before RGB conversion
+    const work: [*]webp.rescaler_t = @ptrCast(@alignCast(p.memory.?)); // rescalers work area
+    const tmp: [*c]u8 = @ptrCast(work + tmp_size1); // tmp storage for scaled YUV444 samples before RGB conversion
 
     var scalers: [*]webp.WebPRescaler = @ptrFromInt(webp.WEBP_ALIGN(@as([*]const u8, @ptrCast(work)) + total_size - rescaler_size));
     p.scaler_y = &scalers[0];
@@ -569,7 +569,7 @@ fn CustomPut(io: *const webp.VP8Io) c_int {
 
     if (mb_w <= 0 or mb_h <= 0) return 0;
 
-    var num_lines_out = p.emit.?(io, p);
+    const num_lines_out = p.emit.?(io, p);
     if (p.emit_alpha) |emit_alpha| _ = emit_alpha(io, p, num_lines_out);
     p.last_y += num_lines_out;
     return 1;

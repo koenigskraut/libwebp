@@ -505,8 +505,7 @@ inline fn Store16x4_SSE2(p1: *const m128, p0: *const m128, q0: *const m128, q1: 
 //------------------------------------------------------------------------------
 // Simple In-loop filtering (Paragraph 15.2)
 
-fn SimpleVFilter16_SSE2(p_: [*c]u8, stride: c_int, thresh: c_int) callconv(.C) void {
-    var p = p_;
+fn SimpleVFilter16_SSE2(p: [*c]u8, stride: c_int, thresh: c_int) callconv(.C) void {
     // Load
     var p1: m128 = @bitCast(webp.offsetPtr(p, -2 * stride)[0..16].*);
     var p0: m128 = @bitCast(webp.offsetPtr(p, -stride)[0..16].*);
@@ -655,7 +654,7 @@ fn VFilter16i_SSE2(p_: [*c]u8, stride: c_int, thresh: c_int, ithresh: c_int, hev
         p = webp.offsetPtr(p, 4 * stride);
 
         var mask = MAX_DIFF1(p3, p2, p1, p0); // compute partial mask
-        p3, p2, var tmp1, var tmp2 = LOAD_H_EDGES4(p, stride);
+        p3, p2, const tmp1, const tmp2 = LOAD_H_EDGES4(p, stride);
         mask = MAX_DIFF2(p3, p2, tmp1, tmp2, mask);
 
         // p3 and p2 are not just temporary variables here: they will be
@@ -913,7 +912,7 @@ fn RD4_SSE2(dst: [*c]u8) callconv(.C) void { // Down-right
 
 inline fn TrueMotion_SSE2(dst_: [*c]u8, size: c_int) void {
     var dst = dst_;
-    var top = dst - BPS;
+    const top = dst - BPS;
     const zero = v128.zero().vec();
     if (size == 4) {
         const top_values = webp.Z_mm_cvtsi32_si128(webp.WebPMemToUint32(top));
