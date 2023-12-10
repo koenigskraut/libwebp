@@ -2,6 +2,12 @@ const std = @import("std");
 
 pub const m128 = @Vector(2, u64);
 
+pub usingnamespace @import("intrinsics/common.zig");
+pub usingnamespace @import("intrinsics/sse2.zig");
+pub usingnamespace @import("intrinsics/sse3.zig");
+pub usingnamespace @import("intrinsics/sse4.1.zig");
+pub usingnamespace @import("intrinsics/ssse3.zig");
+
 pub const v128 = packed struct {
     v: @Vector(2, u64),
 
