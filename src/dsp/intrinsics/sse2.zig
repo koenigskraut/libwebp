@@ -793,7 +793,7 @@ pub inline fn _mm_loadh_pd(a: __m128d, mem_addr: *align(1) const f64) __m128d {
 }
 
 // movq
-pub inline fn _mm_loadl_epi64(mem_addr: *const i64) __m128i {
+pub inline fn _mm_loadl_epi64(mem_addr: *align(1) const i64) __m128i {
     return .{ mem_addr.*, 0 };
 }
 
