@@ -81,62 +81,62 @@ inline fn Select(a: u32, b: u32, c: u32) u32 {
 //------------------------------------------------------------------------------
 // Predictors
 
-pub export fn VP8LPredictor0_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor0_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     _ = left;
     _ = top;
     return webp.ARGB_BLACK;
 }
-pub export fn VP8LPredictor1_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor1_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     _ = top;
     return left[0];
 }
-pub export fn VP8LPredictor2_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor2_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     _ = left;
     return top[0];
 }
-pub export fn VP8LPredictor3_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor3_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     _ = left;
     return top[1];
 }
-pub export fn VP8LPredictor4_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor4_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     _ = left;
     return (top - 1)[0];
 }
-pub export fn VP8LPredictor5_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor5_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     const pred = Average3(left[0], top[0], top[1]);
     return pred;
 }
-pub export fn VP8LPredictor6_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor6_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     const pred = Average2(left[0], (top - 1)[0]);
     return pred;
 }
-pub export fn VP8LPredictor7_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor7_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     const pred = Average2(left[0], top[0]);
     return pred;
 }
-pub export fn VP8LPredictor8_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor8_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     _ = left;
     const pred = Average2((top - 1)[0], top[0]);
     return pred;
 }
-pub export fn VP8LPredictor9_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor9_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     _ = left;
     const pred = Average2(top[0], top[1]);
     return pred;
 }
-pub export fn VP8LPredictor10_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor10_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     const pred = Average4(left[0], (top - 1)[0], top[0], top[1]);
     return pred;
 }
-pub export fn VP8LPredictor11_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor11_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     const pred = Select(top[0], left[0], (top - 1)[0]);
     return pred;
 }
-pub export fn VP8LPredictor12_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor12_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     const pred = ClampedAddSubtractFull(left[0], top[0], (top - 1)[0]);
     return pred;
 }
-pub export fn VP8LPredictor13_C(left: [*c]const u32, top: [*c]const u32) u32 {
+pub export fn VP8LPredictor13_C(left: [*c]const u32, top: [*c]const u32) callconv(.C) u32 {
     const pred = ClampedAddSubtractHalf(left[0], top[0], (top - 1)[0]);
     return pred;
 }
@@ -641,29 +641,29 @@ comptime {
     @export(VP8LMapColor8b, .{ .name = "VP8LMapColor8b" });
 }
 
-extern fn VP8LDspInitSSE2() callconv(.C) void;
+const VP8LDspInitSSE2 = @import("lossless_sse2.zig").VP8LDspInitSSE2;
 const VP8LDspInitSSE41 = @import("lossless_sse41.zig").VP8LDspInitSSE41;
 extern fn VP8LDspInitNEON() callconv(.C) void;
 extern fn VP8LDspInitMIPSdspR2() callconv(.C) void;
 extern fn VP8LDspInitMSA() callconv(.C) void;
 
 fn copyPredictorArray(comptime in: []const u8, comptime T: type, out: []T) void {
-    out[0] = @field(@This(), in ++ "0_C");
-    out[1] = @field(@This(), in ++ "1_C");
-    out[2] = @field(@This(), in ++ "2_C");
-    out[3] = @field(@This(), in ++ "3_C");
-    out[4] = @field(@This(), in ++ "4_C");
-    out[5] = @field(@This(), in ++ "5_C");
-    out[6] = @field(@This(), in ++ "6_C");
-    out[7] = @field(@This(), in ++ "7_C");
-    out[8] = @field(@This(), in ++ "8_C");
-    out[9] = @field(@This(), in ++ "9_C");
-    out[10] = @field(@This(), in ++ "10_C");
-    out[11] = @field(@This(), in ++ "11_C");
-    out[12] = @field(@This(), in ++ "12_C");
-    out[13] = @field(@This(), in ++ "13_C");
-    out[14] = @field(@This(), in ++ "0_C"); // <- padding security sentinels
-    out[15] = @field(@This(), in ++ "0_C");
+    out[0] = &@field(@This(), in ++ "0_C");
+    out[1] = &@field(@This(), in ++ "1_C");
+    out[2] = &@field(@This(), in ++ "2_C");
+    out[3] = &@field(@This(), in ++ "3_C");
+    out[4] = &@field(@This(), in ++ "4_C");
+    out[5] = &@field(@This(), in ++ "5_C");
+    out[6] = &@field(@This(), in ++ "6_C");
+    out[7] = &@field(@This(), in ++ "7_C");
+    out[8] = &@field(@This(), in ++ "8_C");
+    out[9] = &@field(@This(), in ++ "9_C");
+    out[10] = &@field(@This(), in ++ "10_C");
+    out[11] = &@field(@This(), in ++ "11_C");
+    out[12] = &@field(@This(), in ++ "12_C");
+    out[13] = &@field(@This(), in ++ "13_C");
+    out[14] = &@field(@This(), in ++ "0_C"); // <- padding security sentinels
+    out[15] = &@field(@This(), in ++ "0_C");
 }
 
 pub const VP8LDspInit = webp.WEBP_DSP_INIT_FUNC(struct {
@@ -692,7 +692,7 @@ pub const VP8LDspInit = webp.WEBP_DSP_INIT_FUNC(struct {
         if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
                 if (getCpuInfo(.kSSE2) != 0) {
-                    // VP8LDspInitSSE2();
+                    VP8LDspInitSSE2();
                     if (comptime webp.have_sse41) {
                         if (getCpuInfo(.kSSE4_1) != 0) VP8LDspInitSSE41();
                     }
