@@ -2,6 +2,8 @@ const std = @import("std");
 const build_options = @import("build_options");
 const webp = struct {
     usingnamespace @import("cpu.zig");
+    usingnamespace @import("upsampling_sse2.zig");
+    usingnamespace @import("upsampling_sse41.zig");
     usingnamespace @import("yuv.zig");
     usingnamespace @import("../webp/decode.zig");
 };
@@ -199,8 +201,8 @@ comptime {
 }
 
 extern fn WebPInitYUV444ConvertersMIPSdspR2() callconv(.C) void;
-extern fn WebPInitYUV444ConvertersSSE2() callconv(.C) void;
-const WebPInitYUV444ConvertersSSE41 = @import("upsampling_sse41.zig").WebPInitYUV444ConvertersSSE41;
+// extern fn WebPInitYUV444ConvertersSSE2() callconv(.C) void;
+// const WebPInitYUV444ConvertersSSE41 = @import("upsampling_sse41.zig").WebPInitYUV444ConvertersSSE41;
 
 /// Must be called before using WebPYUV444Converters[]
 pub const WebPInitYUV444Converters = webp.WEBP_DSP_INIT_FUNC(struct {
@@ -219,10 +221,10 @@ pub const WebPInitYUV444Converters = webp.WEBP_DSP_INIT_FUNC(struct {
 
         if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
-                if (getCpuInfo(.kSSE2) != 0) WebPInitYUV444ConvertersSSE2();
+                if (getCpuInfo(.kSSE2) != 0) webp.WebPInitYUV444ConvertersSSE2();
             }
             if (comptime webp.have_sse41) {
-                if (getCpuInfo(.kSSE4_1) != 0) WebPInitYUV444ConvertersSSE41();
+                if (getCpuInfo(.kSSE4_1) != 0) webp.WebPInitYUV444ConvertersSSE41();
             }
             if (comptime webp.use_mips_dsp_r2) {
                 if (getCpuInfo(.kMIPSdspR2) != 0) WebPInitYUV444ConvertersMIPSdspR2();
@@ -241,8 +243,8 @@ comptime {
 //------------------------------------------------------------------------------
 // Main calls
 
-extern fn WebPInitUpsamplersSSE2() callconv(.C) void;
-const WebPInitUpsamplersSSE41 = @import("upsampling_sse41.zig").WebPInitUpsamplersSSE41;
+// extern fn WebPInitUpsamplersSSE2() callconv(.C) void;
+// const WebPInitUpsamplersSSE41 = @import("upsampling_sse41.zig").WebPInitUpsamplersSSE41;
 extern fn WebPInitUpsamplersNEON() callconv(.C) void;
 extern fn WebPInitUpsamplersMIPSdspR2() callconv(.C) void;
 extern fn WebPInitUpsamplersMSA() callconv(.C) void;
@@ -269,10 +271,10 @@ pub const WebPInitUpsamplers = webp.WEBP_DSP_INIT_FUNC(struct {
         // If defined, use CPUInfo() to overwrite some pointers with faster versions.
         if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
-                if (getCpuInfo(.kSSE2) != 0) WebPInitUpsamplersSSE2();
+                if (getCpuInfo(.kSSE2) != 0) webp.WebPInitUpsamplersSSE2();
             }
             if (comptime webp.have_sse41) {
-                if (getCpuInfo(.kSSE4_1) != 0) WebPInitUpsamplersSSE41();
+                if (getCpuInfo(.kSSE4_1) != 0) webp.WebPInitUpsamplersSSE41();
             }
             if (comptime webp.use_mips_dsp_r2) {
                 if (getCpuInfo(.kMIPSdspR2) != 0) WebPInitUpsamplersMIPSdspR2();

@@ -4,7 +4,7 @@ const webp = struct {
     usingnamespace @import("intrinsics.zig");
     usingnamespace @import("upsampling.zig");
     usingnamespace @import("yuv.zig");
-    usingnamespace @import("yuv_sse41.zig");
+    usingnamespace @import("yuv_sse2.zig");
     usingnamespace @import("../webp/decode.zig");
 };
 
@@ -77,7 +77,7 @@ inline fn upsample32Pixels(r1: [*c]const u8, r2: [*c]const u8, out: [*c]u8) void
 }
 
 // Turn the macro into a function for reducing code-size when non-critical
-fn Upsample32Pixels_SSE41(r1: [*c]const u8, r2: [*c]const u8, out: [*c]u8) void {
+fn Upsample32Pixels_SSE2(r1: [*c]const u8, r2: [*c]const u8, out: [*c]u8) void {
     upsample32Pixels(r1, r2, out);
 }
 
@@ -90,7 +90,7 @@ inline fn upsampleLastBlock(tb: [*c]const u8, bb: [*c]const u8, num_pixels: usiz
     @memset(r1[num_pixels..], r1[num_pixels - 1]);
     @memset(r2[num_pixels..], r2[num_pixels - 1]);
     // using the shared function instead of the macro saves ~3k code size
-    Upsample32Pixels_SSE41(&r1, &r2, out);
+    Upsample32Pixels_SSE2(&r1, &r2, out);
 }
 
 const convert_handler = fn (y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, dst: [*c]u8) callconv(.C) void;
@@ -105,14 +105,14 @@ fn convert2RGB32(
     r_u: [*c]u8,
     r_v: [*c]u8,
 ) void {
-    const func: convert_handler = @field(webp, func_name ++ "32_SSE41");
+    const func: convert_handler = @field(webp, func_name ++ "32_SSE2");
     func(top_y[cur_x..], r_u, r_v, top_dst[cur_x * xstep ..]);
     if (bottom_y != null)
         func(bottom_y[cur_x..], r_u + 64, r_v + 64, bottom_dst[cur_x * xstep ..]);
 }
 
 const upsample_handler = fn (y: u8, u: u8, v: u8, rgb: [*c]u8) callconv(.Inline) void;
-fn Sse4UpsampleFunc(comptime func_name: []const u8, comptime xstep: comptime_int) webp.WebPUpsampleLinePairFuncBody {
+fn Sse2UpsampleFunc(comptime func_name: []const u8, comptime xstep: comptime_int) webp.WebPUpsampleLinePairFuncBody {
     return struct {
         fn _(top_y: [*c]const u8, bottom_y: [*c]const u8, top_u: [*c]const u8, top_v: [*c]const u8, cur_u: [*c]const u8, cur_v: [*c]const u8, top_dst: [*c]u8, bottom_dst: [*c]u8, len: c_int) callconv(.C) void {
             // 16byte-aligned array to cache reconstructed u and v
@@ -167,17 +167,32 @@ fn Sse4UpsampleFunc(comptime func_name: []const u8, comptime xstep: comptime_int
     }._;
 }
 
-// SSE4 variants of the fancy upsampler.
-const UpsampleRgbLinePair_SSE41 = Sse4UpsampleFunc("VP8YuvToRgb", 3);
-const UpsampleBgrLinePair_SSE41 = Sse4UpsampleFunc("VP8YuvToBgr", 3);
+// SSE2 variants of the fancy upsampler.
+const UpsampleRgbaLinePair_SSE2 = Sse2UpsampleFunc("VP8YuvToRgba", 4);
+const UpsampleBgraLinePair_SSE2 = Sse2UpsampleFunc("VP8YuvToBgra", 4);
+
+const UpsampleRgbLinePair_SSE2 = Sse2UpsampleFunc("VP8YuvToRgb", 3);
+const UpsampleBgrLinePair_SSE2 = Sse2UpsampleFunc("VP8YuvToBgr", 3);
+const UpsampleArgbLinePair_SSE2 = Sse2UpsampleFunc("VP8YuvToArgb", 4);
+const UpsampleRgba4444LinePair_SSE2 = Sse2UpsampleFunc("VP8YuvToRgba4444", 2);
+const UpsampleRgb565LinePair_SSE2 = Sse2UpsampleFunc("VP8YuvToRgb565", 2);
 
 //------------------------------------------------------------------------------
 // Entry point
 
-pub fn WebPInitUpsamplersSSE41() void {
+pub fn WebPInitUpsamplersSSE2() void {
+    webp.WebPUpsamplers[@intFromEnum(CspMode.RGBA)] = &UpsampleRgbaLinePair_SSE2;
+    webp.WebPUpsamplers[@intFromEnum(CspMode.BGRA)] = &UpsampleBgraLinePair_SSE2;
+    webp.WebPUpsamplers[@intFromEnum(CspMode.rgbA)] = &UpsampleRgbaLinePair_SSE2;
+    webp.WebPUpsamplers[@intFromEnum(CspMode.bgrA)] = &UpsampleBgraLinePair_SSE2;
     if (comptime !build_options.reduce_csp) {
-        webp.WebPUpsamplers[@intFromEnum(CspMode.RGB)] = &UpsampleRgbLinePair_SSE41;
-        webp.WebPUpsamplers[@intFromEnum(CspMode.BGR)] = &UpsampleBgrLinePair_SSE41;
+        webp.WebPUpsamplers[@intFromEnum(CspMode.RGB)] = &UpsampleRgbLinePair_SSE2;
+        webp.WebPUpsamplers[@intFromEnum(CspMode.BGR)] = &UpsampleBgrLinePair_SSE2;
+        webp.WebPUpsamplers[@intFromEnum(CspMode.ARGB)] = &UpsampleArgbLinePair_SSE2;
+        webp.WebPUpsamplers[@intFromEnum(CspMode.Argb)] = &UpsampleArgbLinePair_SSE2;
+        webp.WebPUpsamplers[@intFromEnum(CspMode.RGB_565)] = &UpsampleRgb565LinePair_SSE2;
+        webp.WebPUpsamplers[@intFromEnum(CspMode.RGBA_4444)] = &UpsampleRgba4444LinePair_SSE2;
+        webp.WebPUpsamplers[@intFromEnum(CspMode.rgbA_4444)] = &UpsampleRgba4444LinePair_SSE2;
     }
 }
 
@@ -199,12 +214,26 @@ fn YUV444Func(comptime call: call_handler, comptime call_c: webp.WebPYUV444Conve
     }._;
 }
 
-const Yuv444ToRgb_SSE41 = YUV444Func(webp.VP8YuvToRgb32_SSE41, webp.WebPYuv444ToRgb_C, 3);
-const Yuv444ToBgr_SSE41 = YUV444Func(webp.VP8YuvToBgr32_SSE41, webp.WebPYuv444ToBgr_C, 3);
+const Yuv444ToRgba_SSE2 = YUV444Func(webp.VP8YuvToRgba32_SSE2, webp.WebPYuv444ToRgba_C, 4);
+const Yuv444ToBgra_SSE2 = YUV444Func(webp.VP8YuvToBgra32_SSE2, webp.WebPYuv444ToBgra_C, 4);
+const Yuv444ToRgb_SSE2 = YUV444Func(webp.VP8YuvToRgb32_SSE2, webp.WebPYuv444ToRgb_C, 3);
+const Yuv444ToBgr_SSE2 = YUV444Func(webp.VP8YuvToBgr32_SSE2, webp.WebPYuv444ToBgr_C, 3);
+const Yuv444ToArgb_SSE2 = YUV444Func(webp.VP8YuvToArgb32_SSE2, webp.WebPYuv444ToArgb_C, 4);
+const Yuv444ToRgba4444_SSE2 = YUV444Func(webp.VP8YuvToRgba444432_SSE2, webp.WebPYuv444ToRgba4444_C, 2);
+const Yuv444ToRgb565_SSE2 = YUV444Func(webp.VP8YuvToRgb56532_SSE2, webp.WebPYuv444ToRgb565_C, 2);
 
-pub fn WebPInitYUV444ConvertersSSE41() void {
+pub fn WebPInitYUV444ConvertersSSE2() void {
+    webp.WebPYUV444Converters[@intFromEnum(CspMode.RGBA)] = &Yuv444ToRgba_SSE2;
+    webp.WebPYUV444Converters[@intFromEnum(CspMode.BGRA)] = &Yuv444ToBgra_SSE2;
+    webp.WebPYUV444Converters[@intFromEnum(CspMode.rgbA)] = &Yuv444ToRgba_SSE2;
+    webp.WebPYUV444Converters[@intFromEnum(CspMode.bgrA)] = &Yuv444ToBgra_SSE2;
     if (comptime !build_options.reduce_csp) {
-        webp.WebPYUV444Converters[@intFromEnum(CspMode.RGB)] = &Yuv444ToRgb_SSE41;
-        webp.WebPYUV444Converters[@intFromEnum(CspMode.BGR)] = &Yuv444ToBgr_SSE41;
+        webp.WebPYUV444Converters[@intFromEnum(CspMode.RGB)] = &Yuv444ToRgb_SSE2;
+        webp.WebPYUV444Converters[@intFromEnum(CspMode.BGR)] = &Yuv444ToBgr_SSE2;
+        webp.WebPYUV444Converters[@intFromEnum(CspMode.ARGB)] = &Yuv444ToArgb_SSE2;
+        webp.WebPYUV444Converters[@intFromEnum(CspMode.RGBA_4444)] = &Yuv444ToRgba4444_SSE2;
+        webp.WebPYUV444Converters[@intFromEnum(CspMode.RGB_565)] = &Yuv444ToRgb565_SSE2;
+        webp.WebPYUV444Converters[@intFromEnum(CspMode.Argb)] = &Yuv444ToArgb_SSE2;
+        webp.WebPYUV444Converters[@intFromEnum(CspMode.rgbA_4444)] = &Yuv444ToRgba4444_SSE2;
     }
 }

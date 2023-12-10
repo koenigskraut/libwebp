@@ -18,8 +18,7 @@ const CspMode = webp.ColorspaceMode;
 // R = (19077 * y             + 26149 * v - 14234) >> 6
 // G = (19077 * y -  6419 * u - 13320 * v +  8708) >> 6
 // B = (19077 * y + 33050 * u             - 17685) >> 6
-// static
-export fn ConvertYUV444ToRGB_SSE41(Y0: *const __m128i, U0: *const __m128i, V0: *const __m128i, R: *__m128i, G: *__m128i, B: *__m128i) void {
+fn ConvertYUV444ToRGB_SSE41(Y0: *const __m128i, U0: *const __m128i, V0: *const __m128i, R: *__m128i, G: *__m128i, B: *__m128i) void {
     const k19077 = webp._mm_set1_epi16(19077);
     const k26149 = webp._mm_set1_epi16(26149);
     const k14234 = webp._mm_set1_epi16(14234);
@@ -68,8 +67,7 @@ inline fn Load_UV_HI_8_SSE41(src: [*c]const u8) __m128i {
 }
 
 // Convert 32 samples of YUV444 to R/G/B
-// static
-export fn YUV444ToRGB_SSE41(y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, R: *__m128i, G: *__m128i, B: *__m128i) void {
+fn YUV444ToRGB_SSE41(y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, R: *__m128i, G: *__m128i, B: *__m128i) void {
     const Y0 = Load_HI_16_SSE41(y);
     const U0 = Load_HI_16_SSE41(u);
     const V0 = Load_HI_16_SSE41(v);
@@ -77,8 +75,7 @@ export fn YUV444ToRGB_SSE41(y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, R
 }
 
 // Convert 32 samples of YUV420 to R/G/B
-// static
-export fn YUV420ToRGB_SSE41(y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, R: *__m128i, G: *__m128i, B: *__m128i) void {
+fn YUV420ToRGB_SSE41(y: [*c]const u8, u: [*c]const u8, v: [*c]const u8, R: *__m128i, G: *__m128i, B: *__m128i) void {
     const Y0 = Load_HI_16_SSE41(y);
     const U0 = Load_UV_HI_8_SSE41(u);
     const V0 = Load_UV_HI_8_SSE41(v);
@@ -195,7 +192,6 @@ fn YuvToRgbRow_SSE41(y_: [*c]const u8, u_: [*c]const u8, v_: [*c]const u8, dst_:
     }
 }
 
-// static
 fn YuvToBgrRow_SSE41(y_: [*c]const u8, u_: [*c]const u8, v_: [*c]const u8, dst_: [*c]u8, len: c_int) callconv(.C) void {
     var y, var u, var v, var dst = .{ y_, u_, v_, dst_ };
     var n: usize = 0;
@@ -450,7 +446,6 @@ fn ConvertBGR24ToY_SSE41(bgr_: [*c]const u8, y: [*c]u8, width: c_int) callconv(.
     }
 }
 
-// // static
 fn ConvertARGBToY_SSE41(argb: [*c]const u32, y: [*c]u8, width: c_int) callconv(.C) void {
     const max_width = width & ~@as(c_int, 15);
     var i: usize = 0;
