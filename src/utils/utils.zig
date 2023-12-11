@@ -198,8 +198,8 @@ pub fn have_mips_feat(cpu: std.Target.Cpu, feat: std.Target.mips.Feature) bool {
     };
 }
 
-pub inline fn offsetPtr(ptr: anytype, offset: i64) @TypeOf(ptr) {
-    return if (offset < 0) ptr - @abs(offset) else ptr + @abs(offset);
+pub inline fn offsetPtr(ptr: anytype, offset: isize) @TypeOf(ptr) {
+    return ptr + @as(usize, @bitCast(offset));
 }
 
 pub inline fn diffPtr(minuend: anytype, subtrahend: @TypeOf(minuend)) isize {
