@@ -200,9 +200,7 @@ comptime {
     @export(WebPYUV444Converters, .{ .name = "WebPYUV444Converters" });
 }
 
-extern fn WebPInitYUV444ConvertersMIPSdspR2() callconv(.C) void;
-// extern fn WebPInitYUV444ConvertersSSE2() callconv(.C) void;
-// const WebPInitYUV444ConvertersSSE41 = @import("upsampling_sse41.zig").WebPInitYUV444ConvertersSSE41;
+// extern fn WebPInitYUV444ConvertersMIPSdspR2() callconv(.C) void;
 
 /// Must be called before using WebPYUV444Converters[]
 pub const WebPInitYUV444Converters = webp.WEBP_DSP_INIT_FUNC(struct {
@@ -226,9 +224,9 @@ pub const WebPInitYUV444Converters = webp.WEBP_DSP_INIT_FUNC(struct {
             if (comptime webp.have_sse41) {
                 if (getCpuInfo(.kSSE4_1) != 0) webp.WebPInitYUV444ConvertersSSE41();
             }
-            if (comptime webp.use_mips_dsp_r2) {
-                if (getCpuInfo(.kMIPSdspR2) != 0) WebPInitYUV444ConvertersMIPSdspR2();
-            }
+            // if (comptime webp.use_mips_dsp_r2) {
+            //     if (getCpuInfo(.kMIPSdspR2) != 0) WebPInitYUV444ConvertersMIPSdspR2();
+            // }
         }
     }
 }._);
@@ -243,11 +241,9 @@ comptime {
 //------------------------------------------------------------------------------
 // Main calls
 
-// extern fn WebPInitUpsamplersSSE2() callconv(.C) void;
-// const WebPInitUpsamplersSSE41 = @import("upsampling_sse41.zig").WebPInitUpsamplersSSE41;
-extern fn WebPInitUpsamplersNEON() callconv(.C) void;
-extern fn WebPInitUpsamplersMIPSdspR2() callconv(.C) void;
-extern fn WebPInitUpsamplersMSA() callconv(.C) void;
+// extern fn WebPInitUpsamplersNEON() callconv(.C) void;
+// extern fn WebPInitUpsamplersMIPSdspR2() callconv(.C) void;
+// extern fn WebPInitUpsamplersMSA() callconv(.C) void;
 
 /// Must be called before using the WebPUpsamplers[] (and for premultiplied
 /// colorspaces like rgbA, rgbA4444, etc)
@@ -276,18 +272,18 @@ pub const WebPInitUpsamplers = webp.WEBP_DSP_INIT_FUNC(struct {
             if (comptime webp.have_sse41) {
                 if (getCpuInfo(.kSSE4_1) != 0) webp.WebPInitUpsamplersSSE41();
             }
-            if (comptime webp.use_mips_dsp_r2) {
-                if (getCpuInfo(.kMIPSdspR2) != 0) WebPInitUpsamplersMIPSdspR2();
-            }
-            if (comptime webp.use_msa) {
-                if (getCpuInfo(.kMSA) != 0) WebPInitUpsamplersMSA();
-            }
+            // if (comptime webp.use_mips_dsp_r2) {
+            //     if (getCpuInfo(.kMIPSdspR2) != 0) WebPInitUpsamplersMIPSdspR2();
+            // }
+            // if (comptime webp.use_msa) {
+            //     if (getCpuInfo(.kMSA) != 0) WebPInitUpsamplersMSA();
+            // }
         }
 
-        if (comptime webp.have_neon) {
-            if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false))
-                WebPInitUpsamplersNEON();
-        }
+        // if (comptime webp.have_neon) {
+        //     if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false))
+        //         WebPInitUpsamplersNEON();
+        // }
 
         assert(WebPUpsamplers[@intFromEnum(CspMode.RGBA)] != null);
         assert(WebPUpsamplers[@intFromEnum(CspMode.BGRA)] != null);

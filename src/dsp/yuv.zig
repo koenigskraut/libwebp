@@ -365,9 +365,7 @@ comptime {
     @export(WebPConvertARGBToUV, .{ .name = "WebPConvertARGBToUV" });
 }
 
-const WebPInitConvertARGBToYUVSSE2 = webp.WebPInitConvertARGBToYUVSSE2;
-const WebPInitConvertARGBToYUVSSE41 = webp.WebPInitConvertARGBToYUVSSE41;
-extern fn WebPInitConvertARGBToYUVNEON() callconv(.C) void;
+// extern fn WebPInitConvertARGBToYUVNEON() callconv(.C) void;
 
 // Must be called before using the above.
 pub const WebPInitConvertARGBToYUV = webp.WEBP_DSP_INIT_FUNC(struct {
@@ -383,21 +381,21 @@ pub const WebPInitConvertARGBToYUV = webp.WEBP_DSP_INIT_FUNC(struct {
         if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
                 if (getCpuInfo(.kSSE2) != 0) {
-                    WebPInitConvertARGBToYUVSSE2();
+                    webp.WebPInitConvertARGBToYUVSSE2();
                 }
             }
             if (comptime webp.have_sse41) {
                 if (getCpuInfo(.kSSE4_1) != 0) {
-                    WebPInitConvertARGBToYUVSSE41();
+                    webp.WebPInitConvertARGBToYUVSSE41();
                 }
             }
         }
 
-        if (comptime webp.have_neon) {
-            if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getCpuInfo| getCpuInfo(.kNEON) != 0 else false)) {
-                WebPInitConvertARGBToYUVNEON();
-            }
-        }
+        // if (comptime webp.have_neon) {
+        //     if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getCpuInfo| getCpuInfo(.kNEON) != 0 else false)) {
+        //         WebPInitConvertARGBToYUVNEON();
+        //     }
+        // }
 
         assert(WebPConvertARGBToY != null);
         assert(WebPConvertARGBToUV != null);

@@ -3,6 +3,8 @@ const builtin = @import("builtin");
 const build_options = @import("build_options");
 const webp = struct {
     usingnamespace @import("cpu.zig");
+    usingnamespace @import("alpha_processing_sse2.zig");
+    usingnamespace @import("alpha_processing_sse41.zig");
     usingnamespace @import("../utils/utils.zig");
 };
 
@@ -426,10 +428,8 @@ comptime {
 //------------------------------------------------------------------------------
 // Init function
 
-extern fn WebPInitAlphaProcessingMIPSdspR2() void;
-const WebPInitAlphaProcessingSSE2 = @import("alpha_processing_sse2.zig").WebPInitAlphaProcessingSSE2;
-const WebPInitAlphaProcessingSSE41 = @import("alpha_processing_sse41.zig").WebPInitAlphaProcessingSSE41;
-extern fn WebPInitAlphaProcessingNEON() void;
+// extern fn WebPInitAlphaProcessingMIPSdspR2() void;
+// extern fn WebPInitAlphaProcessingNEON() void;
 
 /// To be called first before using the above.
 pub const WebPInitAlphaProcessing: fn () void = webp.WEBP_DSP_INIT_FUNC(struct {
@@ -456,26 +456,26 @@ pub const WebPInitAlphaProcessing: fn () void = webp.WEBP_DSP_INIT_FUNC(struct {
         if (webp.VP8GetCPUInfo) |GetCPUInfo| {
             if (comptime webp.have_sse2) {
                 if (GetCPUInfo(.kSSE2) != 0) {
-                    WebPInitAlphaProcessingSSE2();
+                    webp.WebPInitAlphaProcessingSSE2();
                     if (comptime webp.have_sse41) {
                         if (GetCPUInfo(.kSSE4_1) != 0) {
-                            WebPInitAlphaProcessingSSE41();
+                            webp.WebPInitAlphaProcessingSSE41();
                         }
                     }
                 }
             }
-            if (comptime webp.use_mips_dsp_r2) {
-                if (GetCPUInfo(.kMIPSdspR2) != 0) {
-                    WebPInitAlphaProcessingMIPSdspR2();
-                }
-            }
+            // if (comptime webp.use_mips_dsp_r2) {
+            //     if (GetCPUInfo(.kMIPSdspR2) != 0) {
+            //         WebPInitAlphaProcessingMIPSdspR2();
+            //     }
+            // }
         }
 
-        if (comptime webp.have_neon) {
-            if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false)) {
-                WebPInitAlphaProcessingNEON();
-            }
-        }
+        // if (comptime webp.have_neon) {
+        //     if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false)) {
+        //         WebPInitAlphaProcessingNEON();
+        //     }
+        // }
 
         assert(WebPMultARGBRow != null);
         assert(WebPMultRow != null);

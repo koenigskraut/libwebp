@@ -151,9 +151,12 @@ pub export fn WebPCopyPixels(src: *const webp.Picture, dst: *webp.Picture) void 
 
 //------------------------------------------------------------------------------
 
-extern fn GetColorPalette(pic: ?*const webp.Picture, palette: [*c]u32) callconv(.C) c_int;
+// extern fn GetColorPalette(pic: ?*const webp.Picture, palette: [*c]u32) callconv(.C) c_int;
 pub export fn WebPGetColorPalette(pic: ?*const webp.Picture, palette: [*c]u32) c_int {
-    return GetColorPalette(pic, palette);
+    _ = pic;
+    _ = palette;
+    return 0;
+    // return GetColorPalette(pic, palette);
 }
 
 //------------------------------------------------------------------------------

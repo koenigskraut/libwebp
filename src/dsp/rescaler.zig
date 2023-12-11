@@ -2,6 +2,7 @@ const std = @import("std");
 const build_options = @import("build_options");
 const webp = struct {
     usingnamespace @import("cpu.zig");
+    usingnamespace @import("rescaler_sse2.zig");
     usingnamespace @import("../utils/rescaler_utils.zig");
     usingnamespace @import("../utils/utils.zig");
 };
@@ -204,11 +205,10 @@ comptime {
     @export(WebPRescalerExportRowShrink, .{ .name = "WebPRescalerExportRowShrink" });
 }
 
-const WebPRescalerDspInitSSE2 = @import("rescaler_sse2.zig").WebPRescalerDspInitSSE2;
-extern fn WebPRescalerDspInitMIPS32() callconv(.C) void;
-extern fn WebPRescalerDspInitMIPSdspR2() callconv(.C) void;
-extern fn WebPRescalerDspInitMSA() callconv(.C) void;
-extern fn WebPRescalerDspInitNEON() callconv(.C) void;
+// extern fn WebPRescalerDspInitMIPS32() callconv(.C) void;
+// extern fn WebPRescalerDspInitMIPSdspR2() callconv(.C) void;
+// extern fn WebPRescalerDspInitMSA() callconv(.C) void;
+// extern fn WebPRescalerDspInitNEON() callconv(.C) void;
 
 /// Must be called first before using the above.
 pub const WebPRescalerDspInit = webp.WEBP_DSP_INIT_FUNC(struct {
@@ -223,23 +223,23 @@ pub const WebPRescalerDspInit = webp.WEBP_DSP_INIT_FUNC(struct {
 
         if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
-                if (getCpuInfo(.kSSE2) != 0) WebPRescalerDspInitSSE2();
+                if (getCpuInfo(.kSSE2) != 0) webp.WebPRescalerDspInitSSE2();
             }
-            if (comptime webp.use_mips32) {
-                if (getCpuInfo(.kMIPS32) != 0) WebPRescalerDspInitMIPS32();
-            }
-            if (comptime webp.use_mips_dsp_r2) {
-                if (getCpuInfo(.kMIPSdspR2) != 0) WebPRescalerDspInitMIPSdspR2();
-            }
-            if (comptime webp.use_msa) {
-                if (getCpuInfo(.kMSA) != 0) WebPRescalerDspInitMSA();
-            }
+            // if (comptime webp.use_mips32) {
+            //     if (getCpuInfo(.kMIPS32) != 0) WebPRescalerDspInitMIPS32();
+            // }
+            // if (comptime webp.use_mips_dsp_r2) {
+            //     if (getCpuInfo(.kMIPSdspR2) != 0) WebPRescalerDspInitMIPSdspR2();
+            // }
+            // if (comptime webp.use_msa) {
+            //     if (getCpuInfo(.kMSA) != 0) WebPRescalerDspInitMSA();
+            // }
         }
 
-        if (comptime webp.have_neon) {
-            if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false))
-                WebPRescalerDspInitNEON();
-        }
+        // if (comptime webp.have_neon) {
+        //     if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false))
+        //         WebPRescalerDspInitNEON();
+        // }
 
         assert(WebPRescalerExportRowExpand != null);
         assert(WebPRescalerExportRowShrink != null);

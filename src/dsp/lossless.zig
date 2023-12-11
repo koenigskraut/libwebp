@@ -4,6 +4,8 @@ const webp = struct {
     usingnamespace @import("alpha_processing.zig");
     usingnamespace @import("cpu.zig");
     usingnamespace @import("lossless_common.zig");
+    usingnamespace @import("lossless_sse2.zig");
+    usingnamespace @import("lossless_sse41.zig");
     usingnamespace @import("../dec/vp8l_dec.zig");
     usingnamespace @import("../utils/utils.zig");
     usingnamespace @import("../webp/decode.zig");
@@ -641,11 +643,9 @@ comptime {
     @export(VP8LMapColor8b, .{ .name = "VP8LMapColor8b" });
 }
 
-const VP8LDspInitSSE2 = @import("lossless_sse2.zig").VP8LDspInitSSE2;
-const VP8LDspInitSSE41 = @import("lossless_sse41.zig").VP8LDspInitSSE41;
-extern fn VP8LDspInitNEON() callconv(.C) void;
-extern fn VP8LDspInitMIPSdspR2() callconv(.C) void;
-extern fn VP8LDspInitMSA() callconv(.C) void;
+// extern fn VP8LDspInitNEON() callconv(.C) void;
+// extern fn VP8LDspInitMIPSdspR2() callconv(.C) void;
+// extern fn VP8LDspInitMSA() callconv(.C) void;
 
 fn copyPredictorArray(comptime in: []const u8, comptime T: type, out: []T) void {
     out[0] = &@field(@This(), in ++ "0_C");
@@ -692,24 +692,24 @@ pub const VP8LDspInit = webp.WEBP_DSP_INIT_FUNC(struct {
         if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
                 if (getCpuInfo(.kSSE2) != 0) {
-                    VP8LDspInitSSE2();
+                    webp.VP8LDspInitSSE2();
                     if (comptime webp.have_sse41) {
-                        if (getCpuInfo(.kSSE4_1) != 0) VP8LDspInitSSE41();
+                        if (getCpuInfo(.kSSE4_1) != 0) webp.VP8LDspInitSSE41();
                     }
                 }
             }
-            if (comptime webp.use_mips_dsp_r2) {
-                if (getCpuInfo(.kMIPSdspR2) != 0) VP8LDspInitMIPSdspR2();
-            }
-            if (comptime webp.use_msa) {
-                if (getCpuInfo(.kMSA) != 0) VP8LDspInitMSA();
-            }
+            // if (comptime webp.use_mips_dsp_r2) {
+            //     if (getCpuInfo(.kMIPSdspR2) != 0) VP8LDspInitMIPSdspR2();
+            // }
+            // if (comptime webp.use_msa) {
+            //     if (getCpuInfo(.kMSA) != 0) VP8LDspInitMSA();
+            // }
         }
 
-        if (comptime webp.have_neon) {
-            if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false))
-                VP8LDspInitNEON();
-        }
+        // if (comptime webp.have_neon) {
+        //     if (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getInfo| getInfo(.kNEON) != 0 else false))
+        //         VP8LDspInitNEON();
+        // }
 
         assert(VP8LAddGreenToBlueAndRed != null);
         assert(VP8LTransformColorInverse != null);

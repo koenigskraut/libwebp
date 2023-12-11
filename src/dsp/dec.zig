@@ -2,6 +2,8 @@ const std = @import("std");
 const webp = struct {
     usingnamespace @import("cpu.zig");
     usingnamespace @import("dec_clip_tables.zig");
+    usingnamespace @import("dec_sse2.zig");
+    usingnamespace @import("dec_sse41.zig");
     usingnamespace @import("../dec/common_dec.zig");
     usingnamespace @import("../utils/utils.zig");
 };
@@ -840,12 +842,10 @@ fn DitherCombine8x8_C(dither_: [*c]const u8, dst_: [*c]u8, dst_stride: c_int) ca
 
 //------------------------------------------------------------------------------
 
-const VP8DspInitSSE2 = @import("dec_sse2.zig").VP8DspInitSSE2;
-const VP8DspInitSSE41 = @import("dec_sse41.zig").VP8DspInitSSE41;
-extern fn VP8DspInitNEON() void;
-extern fn VP8DspInitMIPS32() void;
-extern fn VP8DspInitMIPSdspR2() void;
-extern fn VP8DspInitMSA() void;
+// extern fn VP8DspInitNEON() void;
+// extern fn VP8DspInitMIPS32() void;
+// extern fn VP8DspInitMIPSdspR2() void;
+// extern fn VP8DspInitMSA() void;
 
 /// must be called before anything using the above
 pub const VP8DspInit = webp.WEBP_DSP_INIT_FUNC(struct {
@@ -917,28 +917,28 @@ pub const VP8DspInit = webp.WEBP_DSP_INIT_FUNC(struct {
         if (webp.VP8GetCPUInfo) |getCpuInfo| {
             if (comptime webp.have_sse2) {
                 if (getCpuInfo(.kSSE2) != 0) {
-                    VP8DspInitSSE2();
+                    webp.VP8DspInitSSE2();
                     if (comptime webp.have_sse41) {
-                        if (getCpuInfo(.kSSE4_1) != 0) VP8DspInitSSE41();
+                        if (getCpuInfo(.kSSE4_1) != 0) webp.VP8DspInitSSE41();
                     }
                 }
             }
-            if (comptime webp.use_mips32) {
-                if (getCpuInfo(.kMIPS32) != 0) VP8DspInitMIPS32();
-            }
-            if (comptime webp.use_mips_dsp_r2) {
-                if (getCpuInfo(.kMIPSdspR2) != 0) VP8DspInitMIPSdspR2();
-            }
-            if (comptime webp.use_msa) {
-                if (getCpuInfo(.kMSA) != 0) VP8DspInitMSA();
-            }
+            // if (comptime webp.use_mips32) {
+            //     if (getCpuInfo(.kMIPS32) != 0) VP8DspInitMIPS32();
+            // }
+            // if (comptime webp.use_mips_dsp_r2) {
+            //     if (getCpuInfo(.kMIPSdspR2) != 0) VP8DspInitMIPSdspR2();
+            // }
+            // if (comptime webp.use_msa) {
+            //     if (getCpuInfo(.kMSA) != 0) VP8DspInitMSA();
+            // }
         }
 
-        if (comptime webp.have_neon) {
-            if (comptime (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getCpuInfo| getCpuInfo(.kNEON) != 0 else false))) {
-                VP8DspInitNEON();
-            }
-        }
+        // if (comptime webp.have_neon) {
+        //     if (comptime (webp.neon_omit_c_code or (if (webp.VP8GetCPUInfo) |getCpuInfo| getCpuInfo(.kNEON) != 0 else false))) {
+        //         VP8DspInitNEON();
+        //     }
+        // }
 
         assert(VP8TransformWHT != null);
         assert(VP8Transform != null);
