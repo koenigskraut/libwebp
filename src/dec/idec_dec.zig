@@ -618,7 +618,7 @@ pub export fn WebPINewDecoder(output_buffer: ?*webp.DecBuffer) ?*IDecoder {
 pub export fn WebPIDecode(data: [*c]const u8, data_size: usize, config: ?*webp.DecoderConfig) ?*IDecoder {
     var tmp_features: webp.BitstreamFeatures = undefined;
     const features: *webp.BitstreamFeatures = if (config) |c| &c.input else &tmp_features;
-    // memset(&tmp_features, 0, sizeof(tmp_features));
+    tmp_features = std.mem.zeroes(webp.BitstreamFeatures);
 
     // Parse the bitstream's features, if requested:
     if (data != null and data_size > 0) {

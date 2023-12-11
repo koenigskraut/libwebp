@@ -882,7 +882,7 @@ fn ProcessRows(dec: *VP8LDecoder, row: c_int) void {
     if (num_rows > 0) { // Emit output.
         const io = dec.io_.?;
         var rows_data: [*c]u8 = @ptrCast(dec.argb_cache_);
-        const in_stride: c_int = io.width * @as(c_int, @intCast(@sizeOf(u32))); // in unit of RGBA
+        const in_stride: c_int = io.width * @as(c_int, @sizeOf(u32)); // in unit of RGBA
         ApplyInverseTransforms(dec, dec.last_row_, num_rows, rows);
         if (SetCropWindow(io, dec.last_row_, row, &rows_data, in_stride) == 0) {
             // Nothing to output (this time).

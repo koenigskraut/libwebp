@@ -542,10 +542,10 @@ pub export fn VP8LConvertBGRAToBGR_C(src_: [*c]const u32, num_pixels: c_int, dst
     }
 }
 
-fn CopyOrSwap(src_: [*c]const u32, num_pixels: c_int, dst_: [*c]u8, swap_on_big_endian: c_bool) void {
-    var src, var dst = .{ src_, dst_ };
+fn CopyOrSwap(src_: [*c]const u32, num_pixels_: c_int, dst_: [*c]u8, swap_on_big_endian: c_bool) void {
+    var src, var dst, const num_pixels: usize = .{ src_, dst_, @intCast(num_pixels_) };
     if (is_big_endian() == swap_on_big_endian) {
-        const src_end = webp.offsetPtr(src, num_pixels);
+        const src_end = src + num_pixels;
         while (src < src_end) {
             const argb = src[0];
             src += 1;
@@ -553,7 +553,8 @@ fn CopyOrSwap(src_: [*c]const u32, num_pixels: c_int, dst_: [*c]u8, swap_on_big_
             dst += @sizeOf(u32);
         }
     } else {
-        @memcpy(dst[0 .. @as(usize, @intCast(num_pixels)) * @sizeOf(u32)], @as([*c]const u8, @ptrCast(src))[0 .. @as(usize, @intCast(num_pixels)) * @sizeOf(u32)]);
+        const l = num_pixels * @sizeOf(@TypeOf(src.*));
+        @memcpy(dst[0..l], @as([*c]const u8, @ptrCast(src))[0..l]);
     }
 }
 
