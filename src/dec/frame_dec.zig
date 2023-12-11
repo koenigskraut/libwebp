@@ -653,7 +653,7 @@ pub fn VP8GetThreadMethod(options: ?*const webp.DecoderOptions, headers: ?*const
     if (options == null or options.?.use_threads == 0) return 0;
     _ = height;
     assert(headers == null or headers.?.is_lossless == 0);
-    if (comptime build_options.WEBP_USE_THREAD)
+    if (comptime build_options.use_threads)
         if (width >= webp.MIN_WIDTH_FOR_THREADS) return 2;
     return 0;
 }

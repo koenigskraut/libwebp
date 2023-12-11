@@ -134,7 +134,7 @@ fn Init(worker: *Worker) callconv(.C) void {
 }
 
 fn Sync(worker: *Worker) callconv(.C) c_int {
-    if (comptime build_options.WEBP_USE_THREAD) ChangeState(worker, .ok);
+    if (comptime build_options.use_threads) ChangeState(worker, .ok);
     assert(@intFromEnum(worker.status_) <= @intFromEnum(WorkerStatus.ok));
     return @intFromBool(!(worker.had_error != 0));
 }
@@ -143,7 +143,7 @@ fn Reset(worker: *Worker) callconv(.C) c_int {
     var ok = true;
     worker.had_error = 0;
     if (worker.status_ == .not_ok) {
-        if (comptime build_options.WEBP_USE_THREAD) {
+        if (comptime build_options.use_threads) {
             const impl: ?*WorkerImplZig = @ptrCast(@alignCast(webp.WebPSafeCalloc(1, @sizeOf(WorkerImplZig))));
             worker.impl_ = impl;
             if (worker.impl_ == null) return 0;
@@ -180,14 +180,14 @@ fn Execute(worker: *Worker) callconv(.C) void {
 }
 
 fn Launch(worker: *Worker) callconv(.C) void {
-    if (comptime build_options.WEBP_USE_THREAD)
+    if (comptime build_options.use_threads)
         ChangeState(worker, .work)
     else
         Execute(worker);
 }
 
 fn End(worker: *Worker) callconv(.C) void {
-    if (comptime build_options.WEBP_USE_THREAD) {
+    if (comptime build_options.use_threads) {
         if (worker.impl_) |w_impl| {
             const impl: *WorkerImplZig = @ptrCast(@alignCast(w_impl));
             ChangeState(worker, .not_ok);

@@ -11,6 +11,7 @@ pub fn build(b: *std.Build) !void {
     const use_static_tables = b.option(bool, "use-static-tables", "") orelse true;
     const reduce_csp = b.option(bool, "reduce-csp", "") orelse false;
     const max_allocable_memory = b.option(usize, "max-allocable-memory", "") orelse 0;
+    const single_threaded = b.option(bool, "single-threaded", "") orelse false;
 
     const options = b.addOptions();
     options.addOption(bool, "reduce_size", reduce_size);
@@ -21,12 +22,14 @@ pub fn build(b: *std.Build) !void {
     options.addOption(bool, "use_static_tables", use_static_tables);
     options.addOption(bool, "reduce_csp", reduce_csp);
     options.addOption(usize, "max_allocable_memory", max_allocable_memory);
+    options.addOption(bool, "use_threads", !single_threaded); // WEBP_USE_THREAD
 
     const lib = b.addStaticLibrary(.{
         .name = "webp",
         .target = target,
         .optimize = optimize,
         .root_source_file = .{ .path = "src/library.zig" },
+        .single_threaded = single_threaded,
     });
 
     // const libs = [_]*std.Build.Step.Compile{
