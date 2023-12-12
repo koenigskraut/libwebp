@@ -746,7 +746,6 @@ fn AllocateMemory(dec: *webp.VP8Decoder) bool {
 
     // note: left/top-info is initialized once for all.
     @memset((dec.mb_info_ - 1)[0 .. mb_info_size / @sizeOf(webp.VP8MB)], std.mem.zeroes(webp.VP8MB));
-    // _ = c.memset(@as(?*anyopaque, @ptrCast(dec.mb_info_ - 1)), 0, mb_info_size);
     webp.VP8InitScanline(dec); // initialize left too.
 
     // initialize top

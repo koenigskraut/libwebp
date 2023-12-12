@@ -53,12 +53,12 @@ const kAcTable = [128]u16{
 
 pub fn VP8ParseQuant(dec: *webp.VP8Decoder) void {
     const br = &dec.br_;
-    const base_q0: c_int = @intCast(webp.VP8GetValue(br, 7, "global-header"));
-    const dqy1_dc: c_int = if (webp.VP8Get(br, "global-header")) webp.VP8GetSignedValue(br, 4, "global-header") else 0;
-    const dqy2_dc: c_int = if (webp.VP8Get(br, "global-header")) webp.VP8GetSignedValue(br, 4, "global-header") else 0;
-    const dqy2_ac: c_int = if (webp.VP8Get(br, "global-header")) webp.VP8GetSignedValue(br, 4, "global-header") else 0;
-    const dquv_dc: c_int = if (webp.VP8Get(br, "global-header")) webp.VP8GetSignedValue(br, 4, "global-header") else 0;
-    const dquv_ac: c_int = if (webp.VP8Get(br, "global-header")) webp.VP8GetSignedValue(br, 4, "global-header") else 0;
+    const base_q0: c_int = @intCast(br.getValue(7, "global-header"));
+    const dqy1_dc: c_int = if (br.get("global-header")) br.getSignedValue(4, "global-header") else 0;
+    const dqy2_dc: c_int = if (br.get("global-header")) br.getSignedValue(4, "global-header") else 0;
+    const dqy2_ac: c_int = if (br.get("global-header")) br.getSignedValue(4, "global-header") else 0;
+    const dquv_dc: c_int = if (br.get("global-header")) br.getSignedValue(4, "global-header") else 0;
+    const dquv_ac: c_int = if (br.get("global-header")) br.getSignedValue(4, "global-header") else 0;
 
     const hdr: *const webp.VP8SegmentHeader = &dec.segment_hdr_;
 

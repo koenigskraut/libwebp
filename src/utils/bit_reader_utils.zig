@@ -46,19 +46,19 @@ pub const bit_t = if (BITS > 24) u64 else u32;
 pub const range_t = u32;
 
 // Derived type lbit_t = natural type for memory I/O
-pub const lbit_t = if (BITS > 32) u64 else if (BITS > 16) u32 else if (BITS > 8) u64 else u8;
+pub const lbit_t = if (BITS > 32) u64 else if (BITS > 16) u32 else if (BITS > 8) u16 else u8;
 
 //------------------------------------------------------------------------------
 // Bitreader
 
-pub const VP8BitReader = extern struct {
+pub const VP8BitReader = struct {
     // boolean decoder  (keep the field ordering as is!)
     /// current value
     value_: bit_t,
     /// current range minus 1. In [127, 254] interval.
     range_: range_t,
     /// number of valid bits left
-    bits_: c_int,
+    bits_: i32,
     // read buffer
     /// next byte to be read
     buf_: [*c]const u8,
@@ -67,36 +67,71 @@ pub const VP8BitReader = extern struct {
     /// max packed-read position on buffer
     buf_max_: [*c]const u8,
     /// true if input is exhausted
-    eof_: c_bool,
-};
+    eof_: bool,
 
-/// Initialize the bit reader and the boolean decoder.
-pub export fn VP8InitBitReader(br: *VP8BitReader, start: [*]const u8, size: usize) void {
-    assert(size < (1 << 31)); // limit ensured by format and upstream checks
-    br.range_ = 255 - 1;
-    br.value_ = 0;
-    br.bits_ = -8; // to load the very first 8bits
-    br.eof_ = 0;
-    VP8BitReaderSetBuffer(br, start, size);
-    VP8LoadNewBytes(@ptrCast(br));
-}
-
-/// Sets the working read buffer.
-pub export fn VP8BitReaderSetBuffer(br: *VP8BitReader, start: [*c]const u8, size: usize) void {
-    br.buf_ = start;
-    br.buf_end_ = start + size;
-    br.buf_max_ = if (size >= @sizeOf(lbit_t)) (start + size) - @sizeOf(lbit_t) + 1 else start;
-}
-
-/// Update internal pointers to displace the byte buffer by the
-/// relative offset 'offset'.
-pub export fn VP8RemapBitReader(br: *VP8BitReader, offset: isize) void {
-    if (br.buf_ != null) {
-        br.buf_ = webp.offsetPtr(br.buf_, offset);
-        br.buf_end_ = webp.offsetPtr(br.buf_end_, offset);
-        br.buf_max_ = webp.offsetPtr(br.buf_max_, offset);
+    /// Initialize the bit reader and the boolean decoder.
+    pub fn init(self: *VP8BitReader, buffer: []const u8) void {
+        assert(buffer.len < (1 << 31)); // limit ensured by format and upstream checks
+        self.range_ = 255 - 1;
+        self.value_ = 0;
+        self.bits_ = -8; // to load the very first 8bits
+        self.eof_ = false;
+        self.setBuffer(buffer);
+        VP8LoadNewBytes(@ptrCast(self));
     }
-}
+
+    /// Sets the working read buffer.
+    pub fn setBuffer(self: *VP8BitReader, buffer: []const u8) void {
+        self.buf_ = buffer.ptr;
+        self.buf_end_ = buffer.ptr + buffer.len;
+        self.buf_max_ = if (buffer.len >= @sizeOf(lbit_t)) (buffer.ptr + buffer.len) - @sizeOf(lbit_t) + 1 else buffer.ptr;
+    }
+
+    /// Update internal pointers to displace the byte buffer by the
+    /// relative offset 'offset'.
+    pub fn remap(self: *VP8BitReader, offset: isize) void {
+        if (self.buf_ != null) {
+            self.buf_ = webp.offsetPtr(self.buf_, offset);
+            self.buf_end_ = webp.offsetPtr(self.buf_end_, offset);
+            self.buf_max_ = webp.offsetPtr(self.buf_max_, offset);
+        }
+    }
+
+    /// special case for the tail byte-reading
+    fn loadFinalBytes(self: *VP8BitReader) void {
+        assert(self.buf_ != null);
+        // Only read 8bits at a time
+        if (self.buf_ < self.buf_end_) {
+            self.bits_ += 8;
+            self.value_ = (self.buf_.*) | (self.value_ << 8);
+            self.buf_ += 1;
+        } else if (!self.eof_) {
+            self.value_ <<= 8;
+            self.bits_ += 8;
+            self.eof_ = true;
+        } else {
+            self.bits_ = 0; // This is to avoid undefined behaviour with shifts.
+        }
+    }
+
+    /// return the next value made of `num_bits` bits
+    pub fn getValue(self: *VP8BitReader, bits_: u32, label: [*c]const u8) u32 {
+        var v: u32, var bits = .{ 0, bits_ };
+        while (bits > 0) : (bits -= 1) {
+            v |= @as(u32, @intFromBool(VP8GetBit(self, 0x80, label))) << @truncate(bits - 1);
+        }
+        return v;
+    }
+
+    pub fn getSignedValue(self: *VP8BitReader, bits: u32, label: [*c]const u8) i32 {
+        const value: i32 = @intCast(self.getValue(bits, label));
+        return if (get(self, label)) -value else value;
+    }
+
+    pub inline fn get(self: *VP8BitReader, label: [*c]const u8) bool {
+        return self.getValue(1, label) & 1 != 0;
+    }
+};
 
 pub const kVP8Log2Range = [128]u8{
     7, 6, 6, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4,
@@ -129,45 +164,6 @@ pub const kVP8NewRange = [128]u8{
     225, 227, 229, 231, 233, 235, 237, 239,
     241, 243, 245, 247, 249, 251, 253, 127,
 };
-
-// special case for the tail byte-reading
-pub export fn VP8LoadFinalBytes(br: *VP8BitReader) void {
-    assert(br.buf_ != null);
-    // Only read 8bits at a time
-    if (br.buf_ < br.buf_end_) {
-        br.bits_ += 8;
-        br.value_ = (br.buf_.*) | (br.value_ << 8);
-        br.buf_ += 1;
-    } else if (br.eof_ == 0) {
-        br.value_ <<= 8;
-        br.bits_ += 8;
-        br.eof_ = 1;
-    } else {
-        br.bits_ = 0; // This is to avoid undefined behaviour with shifts.
-    }
-}
-
-//------------------------------------------------------------------------------
-// Higher-level calls
-
-// return the next value made of 'num_bits' bits
-pub export fn VP8GetValue(br: *VP8BitReader, bits_arg: u32, label: [*c]const u8) u32 {
-    var v: u32 = 0;
-    var bits: u32 = @intCast(bits_arg);
-    while (bits > 0) : (bits -= 1) {
-        v |= @as(u32, @intFromBool(VP8GetBit(br, 0x80, label))) << @truncate(bits - 1);
-    }
-    return v;
-}
-
-pub export fn VP8GetSignedValue(br: *VP8BitReader, bits: u32, label: [*c]const u8) i32 {
-    const value: i32 = @intCast(VP8GetValue(br, bits, label));
-    return if (VP8Get(br, label)) -value else value;
-}
-
-pub inline fn VP8Get(br: *VP8BitReader, label: [*c]const u8) bool {
-    return VP8GetValue(br, 1, label) & 1 != 0;
-}
 
 // -----------------------------------------------------------------------------
 // Bitreader for lossless format
@@ -336,12 +332,12 @@ inline fn VP8LoadNewBytes(noalias br: *VP8BitReader) void {
         const in_bits = std.mem.readInt(lbit_t, br.buf_[0..@sizeOf(lbit_t)], .big);
         // #endif
         br.buf_ += BITS >> 3;
-        var bits: bit_t = @intCast(in_bits);
+        var bits: bit_t = in_bits;
         if (BITS != 8 * @sizeOf(bit_t)) bits >>= (8 * @sizeOf(bit_t) - BITS);
         br.value_ = bits | (br.value_ << BITS);
         br.bits_ += BITS;
     } else {
-        VP8LoadFinalBytes(br); // no need to be inlined
+        br.loadFinalBytes(); // no need to be inlined
     }
 }
 

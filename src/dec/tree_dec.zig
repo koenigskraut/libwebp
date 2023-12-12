@@ -391,7 +391,7 @@ pub fn VP8ParseIntraModeRow(br: *webp.VP8BitReader, dec: *webp.VP8Decoder) c_int
     var mb_x: c_int = 0;
     while (mb_x < dec.mb_w_) : (mb_x += 1)
         ParseIntraMode(br, dec, mb_x);
-    return @intFromBool(dec.br_.eof_ == 0);
+    return @intFromBool(!dec.br_.eof_);
 }
 
 //------------------------------------------------------------------------------
@@ -546,7 +546,7 @@ pub fn VP8ParseProba(br: *webp.VP8BitReader, dec: *webp.VP8Decoder) void {
             for (c_bands, 0..) |c_ctx, ctx_i| {
                 for (c_ctx, 0..) |c_proba, proba_i| {
                     const v: u8 = if (VP8GetBit(br, c_proba, "global-header"))
-                        @truncate(webp.VP8GetValue(br, 8, "global-header"))
+                        @truncate(br.getValue(8, "global-header"))
                     else
                         CoeffsProba0[type_i][band_i][ctx_i][proba_i];
                     proba.bands_[type_i][band_i].probas_[ctx_i][proba_i] = v;
@@ -557,8 +557,8 @@ pub fn VP8ParseProba(br: *webp.VP8BitReader, dec: *webp.VP8Decoder) void {
             ptr.* = &proba.bands_[type_i][kBands[band_i]];
         }
     }
-    dec.use_skip_proba_ = @intFromBool(webp.VP8Get(br, "global-header"));
+    dec.use_skip_proba_ = @intFromBool(br.get("global-header"));
     if (dec.use_skip_proba_ != 0) {
-        dec.skip_p_ = @truncate(webp.VP8GetValue(br, 8, "global-header"));
+        dec.skip_p_ = @truncate(br.getValue(8, "global-header"));
     }
 }

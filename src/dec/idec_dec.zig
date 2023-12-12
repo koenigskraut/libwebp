@@ -96,7 +96,7 @@ const IDecoder = extern struct {
 };
 
 /// MB context to restore in case VP8DecodeMB() fails
-const MBContext = extern struct {
+const MBContext = struct {
     left_: webp.VP8MB,
     info_: webp.VP8MB,
     token_br_: webp.VP8BitReader,
@@ -140,18 +140,18 @@ fn DoRemap(idec: *IDecoder, offset: isize) void {
             const last_part = dec.num_parts_minus_one_;
             if (offset != 0) {
                 for (0..last_part + 1) |p| {
-                    webp.VP8RemapBitReader(&dec.parts_[p], offset);
+                    dec.parts_[p].remap(offset);
                 }
                 // Remap partition #0 data pointer to new offset, but only in MAP
                 // mode (in APPEND mode, partition #0 is copied into a fixed memory).
                 if (mem.mode_ == .MAP) {
-                    webp.VP8RemapBitReader(&dec.br_, offset);
+                    dec.br_.remap(offset);
                 }
             }
             {
                 const last_start = dec.parts_[last_part].buf_;
                 // pointers are byte-aligned, no need to use sizeof
-                webp.VP8BitReaderSetBuffer(&dec.parts_[last_part], last_start, @intFromPtr(mem.buf_) + mem.end_ - @intFromPtr(last_start));
+                dec.parts_[last_part].setBuffer(last_start[0 .. @intFromPtr(mem.buf_) + mem.end_ - @intFromPtr(last_start)]);
             }
             if (NeedCompressedAlpha(idec) != 0) {
                 const alph_dec: ?*webp.ALPHDecoder = dec.alph_dec_;
@@ -382,7 +382,7 @@ fn CopyParts0Data(idec: *IDecoder) VP8Status {
         const part0_buf: [*c]u8 = @ptrCast(webp.WebPSafeMalloc(1, part_size) orelse return .OutOfMemory);
         @memcpy(part0_buf[0..part_size], br.buf_[0..part_size]);
         mem.part0_buf_ = part0_buf;
-        webp.VP8BitReaderSetBuffer(br, part0_buf, part_size);
+        br.setBuffer(part0_buf[0..part_size]);
     } else {
         // Else: just keep pointers to the partition #0's data in dec_->br_.
     }

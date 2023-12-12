@@ -572,34 +572,34 @@ fn ResetSegmentHeader(hdr: *VP8SegmentHeader) void {
 
 // Paragraph 9.3
 fn ParseSegmentHeader(br: *webp.VP8BitReader, hdr: *VP8SegmentHeader, proba: *VP8Proba) bool {
-    hdr.use_segment_ = @intFromBool(webp.VP8Get(br, "global-header"));
+    hdr.use_segment_ = @intFromBool(br.get("global-header"));
     if (hdr.use_segment_ != 0) {
-        hdr.update_map_ = @intFromBool(webp.VP8Get(br, "global-header"));
-        if (webp.VP8Get(br, "global-header")) { // update data
-            hdr.absolute_delta_ = @intFromBool(webp.VP8Get(br, "global-header"));
+        hdr.update_map_ = @intFromBool(br.get("global-header"));
+        if (br.get("global-header")) { // update data
+            hdr.absolute_delta_ = @intFromBool(br.get("global-header"));
             for (0..webp.NUM_MB_SEGMENTS) |s|
-                hdr.quantizer_[s] = if (webp.VP8Get(br, "global-header"))
-                    @truncate(webp.VP8GetSignedValue(br, 7, "global-header"))
+                hdr.quantizer_[s] = if (br.get("global-header"))
+                    @truncate(br.getSignedValue(7, "global-header"))
                 else
                     0;
 
             for (0..webp.NUM_MB_SEGMENTS) |s|
-                hdr.filter_strength_[s] = if (webp.VP8Get(br, "global-header"))
-                    @truncate(webp.VP8GetSignedValue(br, 6, "global-header"))
+                hdr.filter_strength_[s] = if (br.get("global-header"))
+                    @truncate(br.getSignedValue(6, "global-header"))
                 else
                     0;
         }
         if (hdr.update_map_ != 0) {
             for (0..webp.MB_FEATURE_TREE_PROBS) |s|
-                proba.segments_[s] = if (webp.VP8Get(br, "global-header"))
-                    @truncate(webp.VP8GetValue(br, 8, "global-header"))
+                proba.segments_[s] = if (br.get("global-header"))
+                    @truncate(br.getValue(8, "global-header"))
                 else
                     255;
         }
     } else {
         hdr.update_map_ = 0;
     }
-    return br.eof_ == 0;
+    return !br.eof_;
 }
 
 // Paragraph 9.5
@@ -611,31 +611,27 @@ fn ParseSegmentHeader(br: *webp.VP8BitReader, hdr: *VP8SegmentHeader, proba: *VP
 // If we don't even have the partitions' sizes, then VP8_STATUS_NOT_ENOUGH_DATA
 // is returned, and this is an unrecoverable error.
 // If the partitions were positioned ok, VP8_STATUS_OK is returned.
-fn ParsePartitions(dec: *VP8Decoder, buf: [*c]const u8, size: usize) webp.VP8Error!void {
+fn ParsePartitions(dec: *VP8Decoder, buf: []const u8) webp.VP8Error!void {
     const br = &dec.br_;
-    var sz: [*c]const u8 = buf;
-    const buf_end: [*c]const u8 = buf + size;
-    var size_left = size;
-    // size_t p;
+    var sz = buf;
+    const buf_end = @intFromPtr(buf.ptr + buf.len);
 
-    dec.num_parts_minus_one_ = (@as(u32, 1) << @as(u2, @truncate(webp.VP8GetValue(br, 2, "global-header")))) - 1;
+    dec.num_parts_minus_one_ = (@as(u32, 1) << @as(u2, @truncate(br.getValue(2, "global-header")))) - 1;
     const last_part: usize = dec.num_parts_minus_one_;
-    if (size < 3 * last_part) {
+    if (buf.len < 3 * last_part) {
         // we can't even read the sizes with sz[]! That's a failure.
         return error.NotEnoughData;
     }
-    var part_start: [*c]const u8 = buf + last_part * 3;
-    size_left -= last_part * 3;
+    var parts = buf[last_part * 3 ..];
     for (0..last_part) |p| {
         var psize: usize = @as(usize, sz[0]) | (@as(usize, sz[1]) << 8) | (@as(usize, sz[2]) << 16);
-        if (psize > size_left) psize = size_left;
-        webp.VP8InitBitReader(&dec.parts_[p], part_start, psize);
-        part_start += psize;
-        size_left -= psize;
-        sz += 3;
+        if (psize > parts.len) psize = parts.len;
+        dec.parts_[p].init(parts[0..psize]);
+        parts = parts[psize..];
+        sz = sz[3..];
     }
-    webp.VP8InitBitReader(&dec.parts_[last_part], part_start, size_left);
-    if (part_start < buf_end) return;
+    dec.parts_[last_part].init(parts[0..]);
+    if (@intFromPtr(parts.ptr) < buf_end) return;
     return if (dec.incremental_)
         error.Suspended // Init is ok, but there's not enough data
     else
@@ -645,25 +641,25 @@ fn ParsePartitions(dec: *VP8Decoder, buf: [*c]const u8, size: usize) webp.VP8Err
 // Paragraph 9.4
 fn ParseFilterHeader(br: *webp.VP8BitReader, dec: *VP8Decoder) bool {
     const hdr = &dec.filter_hdr_;
-    hdr.simple_ = @intFromBool(webp.VP8Get(br, "global-header"));
-    hdr.level_ = @intCast(webp.VP8GetValue(br, 6, "global-header"));
-    hdr.sharpness_ = @intCast(webp.VP8GetValue(br, 3, "global-header"));
-    hdr.use_lf_delta_ = @intFromBool(webp.VP8Get(br, "global-header"));
+    hdr.simple_ = @intFromBool(br.get("global-header"));
+    hdr.level_ = @intCast(br.getValue(6, "global-header"));
+    hdr.sharpness_ = @intCast(br.getValue(3, "global-header"));
+    hdr.use_lf_delta_ = @intFromBool(br.get("global-header"));
     if (hdr.use_lf_delta_ != 0) {
-        if (webp.VP8Get(br, "global-header")) { // update lf-delta?
+        if (br.get("global-header")) { // update lf-delta?
             for (0..webp.NUM_REF_LF_DELTAS) |i| {
-                if (webp.VP8Get(br, "global-header"))
-                    hdr.ref_lf_delta_[i] = webp.VP8GetSignedValue(br, 6, "global-header");
+                if (br.get("global-header"))
+                    hdr.ref_lf_delta_[i] = br.getSignedValue(6, "global-header");
             }
 
             for (0..webp.NUM_MODE_LF_DELTAS) |i| {
-                if (webp.VP8Get(br, "global-header"))
-                    hdr.mode_lf_delta_[i] = webp.VP8GetSignedValue(br, 6, "global-header");
+                if (br.get("global-header"))
+                    hdr.mode_lf_delta_[i] = br.getSignedValue(6, "global-header");
             }
         }
     }
     dec.filter_type_ = if (hdr.level_ == 0) 0 else if (hdr.simple_ != 0) 1 else 2;
-    return br.eof_ == 0;
+    return !br.eof_;
 }
 
 // Decode the VP8 frame header. Returns true if ok.
@@ -743,12 +739,12 @@ pub fn VP8GetHeaders(dec_arg: ?*VP8Decoder, io_arg: ?*VP8Io) c_bool {
         return VP8SetError(dec, .NotEnoughData, "bad partition length");
 
     const br = &dec.br_;
-    webp.VP8InitBitReader(br, buf.ptr, frm_hdr.partition_length_);
+    br.init(buf[0..frm_hdr.partition_length_]);
     buf = buf[frm_hdr.partition_length_..];
 
     if (frm_hdr.key_frame_ != 0) {
-        pic_hdr.colorspace_ = @intFromBool(webp.VP8Get(br, "global-header"));
-        pic_hdr.clamp_type_ = @intFromBool(webp.VP8Get(br, "global-header"));
+        pic_hdr.colorspace_ = @intFromBool(br.get("global-header"));
+        pic_hdr.clamp_type_ = @intFromBool(br.get("global-header"));
     }
     if (!ParseSegmentHeader(br, &dec.segment_hdr_, &dec.proba_))
         return VP8SetError(dec, .BitstreamError, "cannot parse segment header");
@@ -757,7 +753,7 @@ pub fn VP8GetHeaders(dec_arg: ?*VP8Decoder, io_arg: ?*VP8Io) c_bool {
     if (!ParseFilterHeader(br, dec))
         return VP8SetError(dec, .BitstreamError, "cannot parse filter header");
 
-    ParsePartitions(dec, buf.ptr, buf.len) catch |e|
+    ParsePartitions(dec, buf) catch |e|
         return VP8SetError(dec, webp.VP8Status.fromErr(e), "cannot parse partitions");
 
     // quantizer change
@@ -767,7 +763,7 @@ pub fn VP8GetHeaders(dec_arg: ?*VP8Decoder, io_arg: ?*VP8Io) c_bool {
     if (frm_hdr.key_frame_ == 0)
         return VP8SetError(dec, .UnsupportedFeature, "Not a key frame.");
 
-    _ = webp.VP8Get(br, "global-header"); // ignore the value of update_proba_
+    _ = br.get("global-header"); // ignore the value of update_proba_
 
     webp.VP8ParseProba(br, dec);
 
@@ -882,7 +878,7 @@ fn GetCoeffsAlt(br: *webp.VP8BitReader, prob: [*c]const [*c]const VP8BandProbas,
     return 16;
 }
 
-const GetCoeffsFunc = ?*const fn (br: [*c]webp.VP8BitReader, prob: [*c]const [*c]const VP8BandProbas, ctx: c_int, dq: *const quant_t, n: c_int, out: [*c]i16) callconv(.C) c_int;
+const GetCoeffsFunc = ?*const fn (br: *webp.VP8BitReader, prob: [*c]const [*c]const VP8BandProbas, ctx: c_int, dq: *const quant_t, n: c_int, out: [*c]i16) callconv(.C) c_int;
 var GetCoeffs: GetCoeffsFunc = null;
 
 const InitGetCoeffs: fn () void = webp.WEBP_DSP_INIT_FUNC(struct {
@@ -1019,7 +1015,7 @@ pub fn VP8DecodeMB(dec: *VP8Decoder, token_br: *webp.VP8BitReader) c_bool {
         finfo.f_inner_ |= @intFromBool(!skip);
     }
 
-    return @intFromBool(token_br.eof_ == 0);
+    return @intFromBool(!token_br.eof_);
 }
 
 pub fn VP8InitScanline(dec: *VP8Decoder) void {
@@ -1034,7 +1030,7 @@ fn ParseFrame(dec: *VP8Decoder, io: *VP8Io) c_int {
     dec.mb_y_ = 0;
     while (dec.mb_y_ < dec.br_mb_y_) : (dec.mb_y_ += 1) {
         // Parse bitstream for this row.
-        const token_br: *webp.VP8BitReader = webp.offsetPtr(@as([*c]webp.VP8BitReader, &dec.parts_), dec.mb_y_ & @as(c_int, @bitCast(dec.num_parts_minus_one_)));
+        const token_br: *webp.VP8BitReader = @ptrCast(webp.offsetPtr(@as([*]webp.VP8BitReader, &dec.parts_), dec.mb_y_ & @as(c_int, @bitCast(dec.num_parts_minus_one_))));
         if (webp.VP8ParseIntraModeRow(&dec.br_, dec) == 0)
             return VP8SetError(dec, .NotEnoughData, "Premature end-of-partition0 encountered.");
 
