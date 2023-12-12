@@ -994,20 +994,20 @@ pub inline fn _mm_mul_su32(a: __m64, b: __m64) __m64 {
 // pmulhw
 pub inline fn _mm_mulhi_epi16(a: __m128i, b: __m128i) __m128i {
     return asm volatile (
-        \\ pmulhw %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [b] "{xmm1}" (b),
+        \\ pmulhw %[b], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [b] "x" (b),
     );
 }
 
 // pmulhuw
 pub inline fn _mm_mulhi_epu16(a: __m128i, b: __m128i) __m128i {
     return asm volatile (
-        \\ pmulhuw %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [b] "{xmm1}" (b),
+        \\ pmulhuw %[b], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [b] "x" (b),
     );
 }
 
@@ -1035,30 +1035,30 @@ pub inline fn _mm_or_si128(a: __m128i, b: __m128i) __m128i {
 // packsswb
 pub inline fn _mm_packs_epi16(a: __m128i, b: __m128i) __m128i {
     return asm volatile (
-        \\ packsswb %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [b] "{xmm1}" (b),
+        \\ packsswb %[b], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [b] "x" (b),
     );
 }
 
 // packssdw
 pub inline fn _mm_packs_epi32(a: __m128i, b: __m128i) __m128i {
     return asm volatile (
-        \\ packssdw %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [b] "{xmm1}" (b),
+        \\ packssdw %[b], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [b] "x" (b),
     );
 }
 
 // packuswb
 pub inline fn _mm_packus_epi16(a: __m128i, b: __m128i) __m128i {
     return asm volatile (
-        \\ packuswb %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [b] "{xmm1}" (b),
+        \\ packuswb %[b], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [b] "x" (b),
     );
 }
 
@@ -1070,10 +1070,10 @@ pub inline fn _mm_pause() void {
 // psadbw
 pub inline fn _mm_sad_epu8(a: __m128i, b: __m128i) __m128i {
     return asm volatile (
-        \\ psadbw %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [b] "{xmm1}" (b),
+        \\ psadbw %[b], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [b] "x" (b),
     );
 }
 
@@ -1234,68 +1234,68 @@ pub inline fn _mm_shufflelo_epi16(a: __m128i, comptime imm8: u8) __m128i {
 // psllw
 pub inline fn _mm_sll_epi16(a: __m128i, count: __m128i) __m128i {
     return asm volatile (
-        \\ psllw %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [count] "{xmm1}" (count),
+        \\ psllw %[count], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [count] "x" (count),
     );
 }
 
 // pslld
 pub inline fn _mm_sll_epi32(a: __m128i, count: __m128i) __m128i {
     return asm volatile (
-        \\ pslld %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [count] "{xmm1}" (count),
+        \\ pslld %[count], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [count] "x" (count),
     );
 }
 
 // psllq
 pub inline fn _mm_sll_epi64(a: __m128i, count: __m128i) __m128i {
     return asm volatile (
-        \\ psllq %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [count] "{xmm1}" (count),
+        \\ psllq %[count], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [count] "x" (count),
     );
 }
 
 // psllw
 pub inline fn _mm_slli_epi16(a: __m128i, imm8: u32) __m128i {
     return asm volatile (
-        \\ psllw %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [count] "{xmm1}" (imm8),
+        \\ psllw %[count], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [count] "x" (imm8),
     );
 }
 
 // pslld
 pub inline fn _mm_slli_epi32(a: __m128i, imm8: u32) __m128i {
     return asm volatile (
-        \\ pslld %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [count] "{xmm1}" (imm8),
+        \\ pslld %[count], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [count] "x" (imm8),
     );
 }
 
 // psllq
 pub inline fn _mm_slli_epi64(a: __m128i, imm8: u32) __m128i {
     return asm volatile (
-        \\ psllq %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [count] "{xmm1}" (imm8),
+        \\ psllq %xmm1, %[count], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [count] "x" (imm8),
     );
 }
 
 // pslldq
 pub inline fn _mm_slli_si128(a: __m128i, comptime imm8: u8) __m128i {
-    return asm volatile (comptimePrint("pslldq ${d}, %xmm0", .{imm8})
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
+    return asm volatile (comptimePrint("pslldq ${d}, %[a]", .{imm8})
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
     );
 }
 
@@ -1312,20 +1312,20 @@ pub inline fn _mm_sqrt_sd(a: __m128d, b: __m128d) __m128d {
 // psraw
 pub inline fn _mm_sra_epi16(a: __m128i, count: __m128i) __m128i {
     return asm volatile (
-        \\ psraw %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [count] "{xmm1}" (count),
+        \\ psraw %[count], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [count] "x" (count),
     );
 }
 
 // psrad
 pub inline fn _mm_sra_epi32(a: __m128i, count: __m128i) __m128i {
     return asm volatile (
-        \\ psrad %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [count] "{xmm1}" (count),
+        \\ psrad %[count], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [count] "x" (count),
     );
 }
 
@@ -1346,30 +1346,30 @@ pub inline fn _mm_srai_epi32(a: __m128i, comptime imm8: u8) __m128i {
 // psrlw
 pub inline fn _mm_srl_epi16(a: __m128i, count: __m128i) __m128i {
     return asm volatile (
-        \\ psrlw %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [count] "{xmm1}" (count),
+        \\ psrlw %[count], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [count] "x" (count),
     );
 }
 
 // psrld
 pub inline fn _mm_srl_epi32(a: __m128i, count: __m128i) __m128i {
     return asm volatile (
-        \\ psrld %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [count] "{xmm1}" (count),
+        \\ psrld %[count], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [count] "x" (count),
     );
 }
 
 // psrlq
 pub inline fn _mm_srl_epi64(a: __m128i, count: __m128i) __m128i {
     return asm volatile (
-        \\ psrlq %xmm1, %xmm0
-        : [ret] "={xmm0}" (-> __m128i),
-        : [a] "{xmm0}" (a),
-          [count] "{xmm1}" (count),
+        \\ psrlq %[count], %[a]
+        : [ret] "=x" (-> __m128i),
+        : [a] "0" (a),
+          [count] "x" (count),
     );
 }
 
