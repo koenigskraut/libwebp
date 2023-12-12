@@ -13,3 +13,7 @@ pub const __v8qi = @Vector(8, u8);
 pub inline fn _mm_shuffle(mask: [4]u8) u8 {
     return (mask[0] << 6) | (mask[1] << 4) | (mask[2] << 2) | mask[3];
 }
+
+pub inline fn clampInt(comptime To: type, v: anytype) To {
+    return @truncate(std.math.clamp(v, std.math.minInt(To), std.math.maxInt(To)));
+}

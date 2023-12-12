@@ -979,24 +979,24 @@ fn HE16_SSE2(dst_: [*c]u8) callconv(.C) void { // horizontal
 }
 
 inline fn Put16_SSE2(v: u8, dst: [*c]u8) void {
-    const values = v128.set1u8(v);
+    const values = webp._mm_set1_epi8(@bitCast(v));
     for (0..16) |j| {
         (dst + j * BPS)[0..16].* = @bitCast(values);
     }
 }
 
 fn DC16_SSE2(dst: [*c]u8) callconv(.C) void { // DC
-    const zero = v128.zero().vec();
-    const top = v128.load128(dst - BPS).vec();
-    const sad8x2 = webp.Z_mm_sad_epu8(top, zero);
+    const zero = webp._mm_setzero_si128();
+    const top = webp._mm_loadu_si128(dst - BPS);
+    const sad8x2 = webp._mm_sad_epu8(top, zero);
     // sum the two sads: sad8x2[0:1] + sad8x2[8:9]
-    const sum = webp.Z_mm_add_epi16(sad8x2, webp.Z_mm_shuffle_epi32(sad8x2, .{ 2, 0, 0, 0 }));
+    const sum = webp._mm_add_epi16(sad8x2, webp._mm_shuffle_epi32(sad8x2, 2));
     var left: u32 = 0;
     for (0..16) |j| {
         left += (dst - 1 + j * BPS)[0];
     }
     {
-        const DC = webp.Z_mm_cvtsi128_si32(sum) +% left +% 16;
+        const DC = @as(u32, @bitCast(webp._mm_cvtsi128_si32(sum))) +% left +% 16;
         Put16_SSE2(@truncate(DC >> 5), dst);
     }
 }
@@ -1010,12 +1010,12 @@ fn DC16NoTop_SSE2(dst: [*c]u8) callconv(.C) void { // DC with top samples unavai
 }
 
 fn DC16NoLeft_SSE2(dst: [*c]u8) callconv(.C) void { // DC with left samples unavailable
-    const zero = v128.zero().vec();
-    const top = v128.load128(dst - BPS).vec();
-    const sad8x2 = webp.Z_mm_sad_epu8(top, zero);
+    const zero = webp._mm_setzero_si128();
+    const top = webp._mm_loadu_si128(@ptrCast(dst - BPS));
+    const sad8x2 = webp._mm_sad_epu8(top, zero);
     // sum the two sads: sad8x2[0:1] + sad8x2[8:9]
-    const sum = webp.Z_mm_add_epi16(sad8x2, webp.Z_mm_shuffle_epi32(sad8x2, .{ 2, 0, 0, 0 }));
-    const DC = webp.Z_mm_cvtsi128_si32(sum) +% 8;
+    const sum = webp._mm_add_epi16(sad8x2, webp._mm_shuffle_epi32(sad8x2, 2));
+    const DC = @as(u32, @bitCast(webp._mm_cvtsi128_si32(sum))) +% 8;
     Put16_SSE2(@truncate(DC >> 4), dst);
 }
 
@@ -1042,24 +1042,24 @@ inline fn Put8x8uv_SSE2(v: u8, dst: [*c]u8) void {
 }
 
 fn DC8uv_SSE2(dst: [*c]u8) callconv(.C) void { // DC
-    const zero = v128.zero().vec();
-    const top = webp.Z_mm_loadl_epi64(dst - BPS);
-    const sum = webp.Z_mm_sad_epu8(top, zero);
+    const zero = webp._mm_setzero_si128();
+    const top = webp._mm_loadl_epi64(@ptrCast(dst - BPS));
+    const sum = webp._mm_sad_epu8(top, zero);
     var left: u32 = 0;
     for (0..8) |j| {
         left += (dst - 1 + j * BPS)[0];
     }
     {
-        const DC = webp.Z_mm_cvtsi128_si32(sum) +% left +% 8;
+        const DC = @as(u32, @bitCast(webp._mm_cvtsi128_si32(sum))) +% left +% 8;
         Put8x8uv_SSE2(@truncate(DC >> 4), dst);
     }
 }
 
 fn DC8uvNoLeft_SSE2(dst: [*c]u8) callconv(.C) void { // DC with no left samples
-    const zero = v128.zero().vec();
-    const top = webp.Z_mm_loadl_epi64(dst - BPS);
-    const sum = webp.Z_mm_sad_epu8(top, zero);
-    const DC = webp.Z_mm_cvtsi128_si32(sum) +% 4;
+    const zero = webp._mm_setzero_si128();
+    const top = webp._mm_loadl_epi64(@ptrCast(dst - BPS));
+    const sum = webp._mm_sad_epu8(top, zero);
+    const DC = @as(u32, @bitCast(webp._mm_cvtsi128_si32(sum))) +% 4;
     Put8x8uv_SSE2(@truncate(DC >> 3), dst);
 }
 
