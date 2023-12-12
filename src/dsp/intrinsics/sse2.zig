@@ -993,26 +993,22 @@ pub inline fn _mm_mul_su32(a: __m64, b: __m64) __m64 {
 
 // pmulhw
 pub inline fn _mm_mulhi_epi16(a: __m128i, b: __m128i) __m128i {
-    const a_: @Vector(8, i16) = @bitCast(a);
-    const b_: @Vector(8, i16) = @bitCast(b);
-    var c: [8]i16 = undefined;
-    inline for (0..8) |i| {
-        const v = @as(i32, a_[i]) *% b_[i];
-        c[i] = @truncate(v >> 16);
-    }
-    return @bitCast(c);
+    return asm volatile (
+        \\ pmulhw %xmm1, %xmm0
+        : [ret] "={xmm0}" (-> __m128i),
+        : [a] "{xmm0}" (a),
+          [b] "{xmm1}" (b),
+    );
 }
 
 // pmulhuw
 pub inline fn _mm_mulhi_epu16(a: __m128i, b: __m128i) __m128i {
-    const a_: @Vector(8, u16) = @bitCast(a);
-    const b_: @Vector(8, u16) = @bitCast(b);
-    var c: [8]u16 = undefined;
-    inline for (0..8) |i| {
-        const v = @as(u32, a_[i]) *% b_[i];
-        c[i] = @truncate(v >> 16);
-    }
-    return @bitCast(c);
+    return asm volatile (
+        \\ pmulhuw %xmm1, %xmm0
+        : [ret] "={xmm0}" (-> __m128i),
+        : [a] "{xmm0}" (a),
+          [b] "{xmm1}" (b),
+    );
 }
 
 // pmullw
@@ -1038,35 +1034,32 @@ pub inline fn _mm_or_si128(a: __m128i, b: __m128i) __m128i {
 
 // packsswb
 pub inline fn _mm_packs_epi16(a: __m128i, b: __m128i) __m128i {
-    const a_: [8]i16 = @bitCast(a);
-    const b_: [8]i16 = @bitCast(b);
-    var c: [16]i8 = undefined;
-    inline for (a_ ++ b_, 0..) |v, i| {
-        c[i] = common.clampInt(i8, v);
-    }
-    return @bitCast(c);
+    return asm volatile (
+        \\ packsswb %xmm1, %xmm0
+        : [ret] "={xmm0}" (-> __m128i),
+        : [a] "{xmm0}" (a),
+          [b] "{xmm1}" (b),
+    );
 }
 
 // packssdw
 pub inline fn _mm_packs_epi32(a: __m128i, b: __m128i) __m128i {
-    const a_: [4]i32 = @bitCast(a);
-    const b_: [4]i32 = @bitCast(b);
-    var c: [8]i16 = undefined;
-    inline for (a_ ++ b_, 0..) |v, i| {
-        c[i] = common.clampInt(i16, v);
-    }
-    return @bitCast(c);
+    return asm volatile (
+        \\ packssdw %xmm1, %xmm0
+        : [ret] "={xmm0}" (-> __m128i),
+        : [a] "{xmm0}" (a),
+          [b] "{xmm1}" (b),
+    );
 }
 
 // packuswb
 pub inline fn _mm_packus_epi16(a: __m128i, b: __m128i) __m128i {
-    const a_: [8]i16 = @bitCast(a);
-    const b_: [8]i16 = @bitCast(b);
-    var c: [16]u8 = undefined;
-    inline for (a_ ++ b_, 0..) |v, i| {
-        c[i] = @truncate(@as(u16, @bitCast(std.math.clamp(v, 0, 255))));
-    }
-    return @bitCast(c);
+    return asm volatile (
+        \\ packuswb %xmm1, %xmm0
+        : [ret] "={xmm0}" (-> __m128i),
+        : [a] "{xmm0}" (a),
+          [b] "{xmm1}" (b),
+    );
 }
 
 // pause
