@@ -1,6 +1,6 @@
 const std = @import("std");
 const webp = struct {
-    usingnamespace @import("intrinsics.zig");
+    usingnamespace @import("intrinzic");
     usingnamespace @import("../utils/utils.zig");
 };
 const alpha_processing = @import("alpha_processing.zig");

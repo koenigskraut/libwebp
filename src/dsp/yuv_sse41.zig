@@ -1,7 +1,7 @@
 const std = @import("std");
 const webp = struct {
     usingnamespace @import("common_sse41.zig");
-    usingnamespace @import("intrinsics.zig");
+    usingnamespace @import("intrinzic");
     usingnamespace @import("yuv.zig");
     usingnamespace @import("../utils/utils.zig");
     usingnamespace @import("../webp/decode.zig");

@@ -1,7 +1,7 @@
 const std = @import("std");
 const build_options = @import("build_options");
 const webp = struct {
-    usingnamespace @import("intrinsics.zig");
+    usingnamespace @import("intrinzic");
     usingnamespace @import("upsampling.zig");
     usingnamespace @import("yuv.zig");
     usingnamespace @import("yuv_sse2.zig");

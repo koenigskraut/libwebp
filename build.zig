@@ -24,6 +24,8 @@ pub fn build(b: *std.Build) !void {
     options.addOption(usize, "max_allocable_memory", max_allocable_memory);
     options.addOption(bool, "use_threads", !single_threaded); // WEBP_USE_THREAD
 
+    const intrinzic_module = b.dependency("intrinzic", .{}).module("intrinzic");
+
     const lib = b.addStaticLibrary(.{
         .name = "webp",
         .target = target,
