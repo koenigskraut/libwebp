@@ -3,6 +3,10 @@ const std = @import("std");
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+
+    const only_decoder = b.option(bool, "only-decoder", "") orelse false;
+    const zig_decoder = b.option(bool, "zig-decoder", "") orelse false;
+
     const reduce_size = b.option(bool, "reduce-size", "") orelse false;
     const no_fancy_upsampling = b.option(bool, "no-fancy-upsampling", "") orelse false;
     const swap_16bit_csp = b.option(bool, "swap-16bit-csp", "") orelse false;
@@ -14,6 +18,7 @@ pub fn build(b: *std.Build) !void {
     const single_threaded = b.option(bool, "single-threaded", "") orelse false;
 
     const options = b.addOptions();
+    options.addOption(bool, "only_decoder", only_decoder);
     options.addOption(bool, "reduce_size", reduce_size);
     options.addOption(bool, "fancy_upsampling", !no_fancy_upsampling);
     options.addOption(bool, "swap_16bit_csp", swap_16bit_csp);
@@ -26,32 +31,31 @@ pub fn build(b: *std.Build) !void {
 
     const intrinzic_module = b.dependency("intrinzic", .{}).module("intrinzic");
 
-    const lib = b.addStaticLibrary(.{
-        .name = "webp",
+    const libsharpyuv_srsc = sharpyuv_srcs;
+    const libwebpdecoder_srsc = dec_srcs ++ dsp_dec_srsc ++ utils_dec_srsc;
+    const libwebp_srsc: StrSlice = if (!only_decoder and !zig_decoder)
+        libwebpdecoder_srsc ++ enc_srsc ++ dsp_enc_srcs ++ utils_enc_srcs ++ libsharpyuv_srsc
+    else if (!only_decoder and zig_decoder)
+        .{"src/utils/palette.c"} ++ enc_srsc ++ dsp_enc_srcs ++ utils_enc_srcs ++ libsharpyuv_srsc
+    else if (only_decoder and !zig_decoder) libwebpdecoder_srsc else &.{};
+    const libwebpmux_srsc = mux_srcs;
+    const libwebpdemux_srsc = demux_srcs;
+
+    const libwebp = b.addStaticLibrary(.{
+        .name = if (only_decoder) "webpdecoder" else "webp",
         .target = target,
         .optimize = optimize,
-        .root_source_file = .{ .path = "src/library.zig" },
+        .root_source_file = if (zig_decoder) .{ .path = "src/library.zig" } else null,
         .single_threaded = single_threaded,
     });
 
-    // const libs = [_]*std.Build.Step.Compile{
-    //     // libwebp
-    //     b.addSharedLibrary(.{ .name = "webp", .target = target, .optimize = optimize, .version = .{ .major = 8, .minor = 8, .patch = 1 } }),
-    //     b.addStaticLibrary(.{ .name = "webp", .target = target, .optimize = optimize }),
-    //     // libwebpdecoder
-    //     b.addSharedLibrary(.{ .name = "webpdecoder", .target = target, .optimize = optimize, .version = .{ .major = 4, .minor = 8, .patch = 1 } }),
-    //     b.addStaticLibrary(.{ .name = "webpdecoder", .target = target, .optimize = optimize }),
-    //     // libwebpmux
-    //     b.addSharedLibrary(.{ .name = "webpmux", .target = target, .optimize = optimize, .version = .{ .major = 3, .minor = 13, .patch = 0 } }),
-    //     b.addStaticLibrary(.{ .name = "webpmux", .target = target, .optimize = optimize }),
-    //     // libwebpdemux
-    //     b.addSharedLibrary(.{ .name = "webpdemux", .target = target, .optimize = optimize, .version = .{ .major = 2, .minor = 14, .patch = 0 } }),
-    //     b.addStaticLibrary(.{ .name = "webpdemux", .target = target, .optimize = optimize }),
-    // };
+    const libwebpmux = b.addStaticLibrary(.{ .name = "webpmux", .target = target, .optimize = optimize });
+    const libwebpdemux = b.addStaticLibrary(.{ .name = "webpdemux", .target = target, .optimize = optimize });
 
     var c_flags = std.ArrayList([]const u8).init(b.allocator);
     defer c_flags.deinit();
     try c_flags.appendSlice(&.{
+        "-fno-sanitize=undefined",
         "-fvisibility=hidden",
         "-Wextra",
         "-Wold-style-definition",
@@ -75,8 +79,9 @@ pub fn build(b: *std.Build) !void {
             try c_flags.append("-m32");
         // SSE4.1-specific flags:
         if (have_x86_feat(cpu, .sse4_1)) {
-            // for (libs) |lib| lib.defineCMacro("WEBP_HAVE_SSE41", null);
-            lib.defineCMacro("WEBP_HAVE_SSE41", null);
+            libwebp.defineCMacro("WEBP_HAVE_SSE41", null);
+            libwebpmux.defineCMacro("WEBP_HAVE_SSE41", null);
+            libwebpdemux.defineCMacro("WEBP_HAVE_SSE41", null);
             try c_flags.append("-msse4.1");
         }
         // NEON-specific flags (mandatory for aarch64):
@@ -92,44 +97,35 @@ pub fn build(b: *std.Build) !void {
 
         // Windows recommends setting both UNICODE and _UNICODE.
         if (target.isWindows()) {
-            // for (libs) |lib| {
-            lib.defineCMacro("UNICODE", null);
-            lib.defineCMacro("_UNICODE", null);
-            // }
+            libwebp.defineCMacro("UNICODE", null);
+            libwebpmux.defineCMacro("UNICODE", null);
+            libwebpdemux.defineCMacro("UNICODE", null);
+            libwebp.defineCMacro("_UNICODE", null);
+            libwebpmux.defineCMacro("_UNICODE", null);
+            libwebpdemux.defineCMacro("_UNICODE", null);
         }
     }
 
-    // for (libs) |lib| lib.force_pic = true;
-    // for (libs) |lib| lib.linkLibC();
-    // for (libs) |lib| lib.addIncludePath(.{ .path = "." });
-    // for (libs) |lib| lib.defineCMacro("WEBP_USE_THREAD", null);
-    // for (libs) |lib| lib.linkSystemLibrary("pthread");
-    lib.force_pic = true;
-    lib.linkLibC();
-    lib.addIncludePath(.{ .path = "." });
-    lib.defineCMacro("WEBP_USE_THREAD", null);
-    options.addOption(bool, "WEBP_USE_THREAD", true);
-    lib.linkSystemLibrary("pthread");
-    lib.addOptions("build_options", options);
+    inline for (.{ libwebp, libwebpmux, libwebpdemux }) |lib| {
+        lib.force_pic = true;
+        lib.linkLibC();
+        lib.addIncludePath(.{ .path = "." });
+        lib.defineCMacro("WEBP_USE_THREAD", null);
+        lib.linkSystemLibrary("pthread");
+        b.installArtifact(lib);
+    }
+    libwebp.addOptions("build_options", options);
+    libwebp.addModule("intrinzic", intrinzic_module);
 
-    // libwebp
-    lib.addCSourceFiles(.{ .files = libwebp_srsc, .flags = c_flags.items });
-    // for (libs[0..2]) |lib| lib.addCSourceFiles(.{ .files = libwebp_srsc, .flags = c_flags.items });
-    // // libwebpdecoder
-    // for (libs[2..4]) |lib| lib.addCSourceFiles(.{ .files = libwebpdecoder_srsc, .flags = c_flags.items });
-    // // libwebpmux
-    // for (libs[4..6]) |lib| lib.addCSourceFiles(.{ .files = libwebpmux_srsc, .flags = c_flags.items });
-    // // libwebpdemux
-    // for (libs[6..8]) |lib| lib.addCSourceFiles(.{ .files = libwebpdemux_srsc, .flags = c_flags.items });
+    libwebp.addCSourceFiles(.{ .files = libwebp_srsc, .flags = c_flags.items });
+    libwebpmux.addCSourceFiles(.{ .files = libwebpmux_srsc, .flags = c_flags.items });
+    libwebpdemux.addCSourceFiles(.{ .files = libwebpdemux_srsc, .flags = c_flags.items });
 
     const headers: StrSlice = &.{ "decode.h", "encode.h", "types.h", "mux.h", "demux.h", "mux_types.h" };
     inline for (headers) |h| {
         const h_file = b.addInstallHeaderFile("src/webp/" ++ h, h);
         b.install_tls.step.dependOn(&h_file.step);
     }
-
-    // for (libs) |lib| b.installArtifact(lib);
-    b.installArtifact(lib);
 
     const unit_tests = b.addTest(.{
         .name = "tests",
@@ -138,7 +134,7 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .link_libc = true,
     });
-    unit_tests.linkLibrary(lib);
+    unit_tests.linkLibrary(libwebp);
     unit_tests.addIncludePath(.{ .path = "." });
     unit_tests.addOptions("build_options", options);
 
@@ -147,31 +143,10 @@ pub fn build(b: *std.Build) !void {
 
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&tests_cmd.step);
-
-    const single = b.addExecutable(.{
-        .name = "single",
-        .root_source_file = .{ .path = "src/single.zig" },
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    // single.linkLibrary(lib);
-    // single.linkSystemLibrary("webp");
-    single.addIncludePath(.{ .path = "." });
-    single.addOptions("build_options", options);
-    b.installArtifact(single);
-    const run_single = b.addRunArtifact(single);
-    run_single.step.dependOn(b.getInstallStep());
-    b.step("run", "Run single").dependOn(&run_single.step);
 }
 
 const StrSlice = []const []const u8;
 
-const libsharpyuv_srsc = sharpyuv_srcs;
-const libwebpdecoder_srsc = dec_srcs ++ dsp_dec_srsc ++ utils_dec_srsc;
-const libwebp_srsc = libwebpdecoder_srsc ++ enc_srsc ++ dsp_enc_srcs ++ utils_enc_srcs ++ libsharpyuv_srsc;
-const libwebpmux_srsc = mux_srcs;
-const libwebpdemux_srsc = demux_srcs;
 // const libwebpextra = extra_srsc;
 
 const sharpyuv_srcs: StrSlice = &.{
@@ -185,16 +160,16 @@ const sharpyuv_srcs: StrSlice = &.{
 };
 
 const dec_srcs: StrSlice = &.{
-    // "src/dec/alpha_dec.c",
-    // "src/dec/buffer_dec.c",
-    // "src/dec/frame_dec.c",
-    // "src/dec/idec_dec.c",
-    // "src/dec/io_dec.c",
-    // "src/dec/quant_dec.c",
-    // "src/dec/tree_dec.c",
-    // "src/dec/vp8_dec.c",
-    // "src/dec/vp8l_dec.c",
-    // "src/dec/webp_dec.c",
+    "src/dec/alpha_dec.c",
+    "src/dec/buffer_dec.c",
+    "src/dec/frame_dec.c",
+    "src/dec/idec_dec.c",
+    "src/dec/io_dec.c",
+    "src/dec/quant_dec.c",
+    "src/dec/tree_dec.c",
+    "src/dec/vp8_dec.c",
+    "src/dec/vp8l_dec.c",
+    "src/dec/webp_dec.c",
 };
 
 const demux_srcs: StrSlice = &.{
@@ -203,56 +178,56 @@ const demux_srcs: StrSlice = &.{
 };
 
 const dsp_dec_srsc: StrSlice = &.{
-    // "src/dsp/alpha_processing.c",
+    "src/dsp/alpha_processing.c",
     "src/dsp/alpha_processing_mips_dsp_r2.c",
     "src/dsp/alpha_processing_neon.c",
-    // "src/dsp/alpha_processing_sse2.c",
-    // "src/dsp/alpha_processing_sse41.c",
+    "src/dsp/alpha_processing_sse2.c",
+    "src/dsp/alpha_processing_sse41.c",
 
-    // "src/dsp/cpu.c",
+    "src/dsp/cpu.c",
 
-    // "src/dsp/dec.c",
-    // "src/dsp/dec_clip_tables.c",
+    "src/dsp/dec.c",
+    "src/dsp/dec_clip_tables.c",
     "src/dsp/dec_mips32.c",
     "src/dsp/dec_mips_dsp_r2.c",
     "src/dsp/dec_msa.c",
     "src/dsp/dec_neon.c",
-    // "src/dsp/dec_sse2.c",
-    // "src/dsp/dec_sse41.c",
+    "src/dsp/dec_sse2.c",
+    "src/dsp/dec_sse41.c",
 
-    // "src/dsp/filters.c",
+    "src/dsp/filters.c",
     "src/dsp/filters_mips_dsp_r2.c",
     "src/dsp/filters_msa.c",
     "src/dsp/filters_neon.c",
-    // "src/dsp/filters_sse2.c",
+    "src/dsp/filters_sse2.c",
 
-    // "src/dsp/lossless.c",
+    "src/dsp/lossless.c",
     "src/dsp/lossless_mips_dsp_r2.c",
     "src/dsp/lossless_msa.c",
     "src/dsp/lossless_neon.c",
-    // "src/dsp/lossless_sse2.c",
-    // "src/dsp/lossless_sse41.c",
+    "src/dsp/lossless_sse2.c",
+    "src/dsp/lossless_sse41.c",
 
-    // "src/dsp/rescaler.c",
+    "src/dsp/rescaler.c",
     "src/dsp/rescaler_mips32.c",
     "src/dsp/rescaler_mips_dsp_r2.c",
     "src/dsp/rescaler_msa.c",
     "src/dsp/rescaler_neon.c",
-    // "src/dsp/rescaler_sse2.c",
+    "src/dsp/rescaler_sse2.c",
 
-    // "src/dsp/upsampling.c",
+    "src/dsp/upsampling.c",
     "src/dsp/upsampling_mips_dsp_r2.c",
     "src/dsp/upsampling_msa.c",
     "src/dsp/upsampling_neon.c",
-    // "src/dsp/upsampling_sse2.c",
-    // "src/dsp/upsampling_sse41.c",
+    "src/dsp/upsampling_sse2.c",
+    "src/dsp/upsampling_sse41.c",
 
-    // "src/dsp/yuv.c",
+    "src/dsp/yuv.c",
     "src/dsp/yuv_mips32.c",
     "src/dsp/yuv_mips_dsp_r2.c",
     "src/dsp/yuv_neon.c",
-    // "src/dsp/yuv_sse2.c",
-    // "src/dsp/yuv_sse41.c",
+    "src/dsp/yuv_sse2.c",
+    "src/dsp/yuv_sse41.c",
 };
 
 const dsp_enc_srcs: StrSlice = &.{
@@ -313,21 +288,21 @@ const mux_srcs: StrSlice = &.{
 };
 
 const utils_dec_srsc: StrSlice = &.{
-    // "src/utils/bit_reader_utils.c",
-    // "src/utils/color_cache_utils.c",
-    // "src/utils/huffman_utils.c",
-    // "src/utils/quant_levels_dec_utils.c",
-    // "src/utils/random_utils.c",
-    // "src/utils/rescaler_utils.c",
-    // "src/utils/thread_utils.c",
-    // "src/utils/utils.c",
+    "src/utils/bit_reader_utils.c",
+    "src/utils/color_cache_utils.c",
+    "src/utils/huffman_utils.c",
+    "src/utils/palette.c",
+    "src/utils/quant_levels_dec_utils.c",
+    "src/utils/random_utils.c",
+    "src/utils/rescaler_utils.c",
+    "src/utils/thread_utils.c",
+    "src/utils/utils.c",
 };
 
 const utils_enc_srcs: StrSlice = &.{
     "src/utils/bit_writer_utils.c",
     "src/utils/filters_utils.c",
     "src/utils/huffman_encode_utils.c",
-    "src/utils/palette.c",
     "src/utils/quant_levels_utils.c",
 };
 
