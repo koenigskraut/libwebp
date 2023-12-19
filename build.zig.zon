@@ -1,0 +1,14 @@
+.{
+    .name = "libwebp-c",
+    .version = "0.0.0",
+
+    .dependencies = .{
+        .intrinzic = .{
+            .url = "https://github.com/koenigskraut/intrinzic/archive/cddbd65797d0947b0a4f905f446c7c6c32a4db3f.tar.gz",
+            .hash = "1220f090bf177745f82fd07fa82360d00fd9d68384825e0ba8175c3a2d9fd1f3a41d",
+        },
+    },
+    .paths = .{
+        "",
+    },
+}

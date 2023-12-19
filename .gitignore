@@ -56,3 +56,5 @@ tests/fuzzer/mux_demux_api_fuzzer
 tests/fuzzer/simple_api_fuzzer
 /zig-cache
 /zig-out
+/src/data
+/src/compare
