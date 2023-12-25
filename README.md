@@ -27,7 +27,20 @@ PATENTS.
 
 ## Building
 
-See the [building documentation](doc/building.md).
+Zig version required is at least `0.12.0-dev.1808+69195d0cd`. Build process for native target is just
+```console
+zig build -Doptimize=ReleaseSmall
+```
+Consider specifying generic target for maximum compatibility, for example:
+```console
+zig build -Dtarget=x86_64-linux
+```
+Pass option `zig-decoder` in order to use Zig port. If decoder is the only thing you'll need, you can use `only-decoder` option to deal only with Zig:
+```console
+zig build -Dzig-decoder -Donly-decoder
+```
+
+Also see the general [building documentation](doc/building.md).
 
 ## Encoding and Decoding Tools
 
